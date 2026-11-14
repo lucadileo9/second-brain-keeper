@@ -1,8 +1,8 @@
-# Obsidian VaultKeeper (`vk`)
+# Second Brain Keeper (`sbk`)
 
-> Motore universale di governance, refactoring atomico, diagnostica e manutenzione per Second Brain Obsidian e archivi documentali.
+> Motore universale di governance, refactoring atomico, diagnostica e manutenzione per Second Brain, Obsidian e archivi documentali.
 
-[![CI](https://github.com/lucadileo9/obsidian-vaultkeeper/actions/workflows/ci.yml/badge.svg)](https://github.com/lucadileo9/obsidian-vaultkeeper/actions/workflows/ci.yml)
+[![CI](https://github.com/lucadileo9/second-brain-keeper/actions/workflows/ci.yml/badge.svg)](https://github.com/lucadileo9/second-brain-keeper/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)]()
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -30,7 +30,7 @@ pip install second-brain-keeper
 
 ### Installazione per Sviluppo e Contributi
 ```bash
-git clone https://github.com/lucadileo9/obsidian-vaultkeeper.git
+git clone https://github.com/lucadileo9/second-brain-keeper.git
 cd second-brain-keeper
 python3 -m venv .venv
 source .venv/bin/activate
