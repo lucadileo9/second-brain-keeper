@@ -55,10 +55,12 @@ def test_batch_move_preflight_failures(mock_vault_with_config: Path) -> None:
 
     # 1. Missing source
     with pytest.raises(LifecycleError, match="Source path does not exist"):
-        v.batch_move({
-            str(valid_note): "10-19_Progetti",
-            str(missing_note): "10-19_Progetti",
-        })
+        v.batch_move(
+            {
+                str(valid_note): "10-19_Progetti",
+                str(missing_note): "10-19_Progetti",
+            }
+        )
     assert valid_note.exists()
 
     # 2. Destination collision with existing note
@@ -66,9 +68,11 @@ def test_batch_move_preflight_failures(mock_vault_with_config: Path) -> None:
     existing_dest.write_text("# Collision\n", encoding="utf-8")
 
     with pytest.raises(LifecycleError, match="Destination already exists"):
-        v.batch_move({
-            str(valid_note): "10-19_Progetti",
-        })
+        v.batch_move(
+            {
+                str(valid_note): "10-19_Progetti",
+            }
+        )
 
     # 3. Duplicate destination in same batch
     n1 = mock_vault_with_config / "00-09_Meta" / "Doc_A.md"
@@ -81,10 +85,12 @@ def test_batch_move_preflight_failures(mock_vault_with_config: Path) -> None:
     sub.write_text("# Sub A\n", encoding="utf-8")
 
     with pytest.raises(LifecycleError, match="Multiple sources map to the same destination"):
-        v.batch_move({
-            str(n1): "10-19_Progetti",
-            str(sub): "10-19_Progetti",
-        })
+        v.batch_move(
+            {
+                str(n1): "10-19_Progetti",
+                str(sub): "10-19_Progetti",
+            }
+        )
     assert n1.exists()
     assert sub.exists()
 
@@ -153,10 +159,12 @@ def test_batch_rename_preflight_failures(mock_vault_with_config: Path) -> None:
     # 3. Intra-batch collision (two notes renamed to same target stem)
     note2 = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
     with pytest.raises(NamingError, match="Duplicate target stem"):
-        v.batch_rename({
-            str(note1): "Nuova_Destinazione",
-            str(note2): "Nuova_Destinazione",
-        })
+        v.batch_rename(
+            {
+                str(note1): "Nuova_Destinazione",
+                str(note2): "Nuova_Destinazione",
+            }
+        )
 
 
 def test_batch_rename_dry_run(mock_vault_with_config: Path) -> None:
@@ -225,10 +233,12 @@ def test_batch_add_tags_nominal_and_overwrite_and_undo(mock_vault_with_config: P
     note2 = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
 
     # Add tags
-    results = v.batch_add_frontmatter_tags({
-        str(note1): ["area/lavoro"],
-        str(note2): ["stato/attivo"],
-    })
+    results = v.batch_add_frontmatter_tags(
+        {
+            str(note1): ["area/lavoro"],
+            str(note2): ["stato/attivo"],
+        }
+    )
     assert len(results) == 2
     assert "area/lavoro" in note1.read_text(encoding="utf-8")
     assert "stato/attivo" in note2.read_text(encoding="utf-8")

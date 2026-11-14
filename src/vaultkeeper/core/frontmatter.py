@@ -257,7 +257,7 @@ def batch_set_type(
     for p, clean_type in validated_items:
         content = p.read_text(encoding="utf-8")
         updated = update_frontmatter(content, {type_field: clean_type}, type_field=type_field)
-        changed = (updated != content)
+        changed = updated != content
 
         if changed and not dry_run:
             if transaction:
@@ -346,7 +346,7 @@ def batch_add_tags(
             final_tags = list(dict.fromkeys(fm.tags + cleaned_tags))
 
         updated = update_frontmatter(content, {"tags": final_tags}, type_field=type_field)
-        changed = (updated != content)
+        changed = updated != content
 
         if changed and not dry_run:
             if transaction:

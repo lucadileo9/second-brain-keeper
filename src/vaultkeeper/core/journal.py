@@ -314,8 +314,7 @@ class TransactionJournal:
 
             if action.action_type == "write_content":
                 moved_by_tx = any(
-                    a.path == action.path and a.action_type == "move_file"
-                    for a in record.actions[idx + 1 :]
+                    a.path == action.path and a.action_type == "move_file" for a in record.actions[idx + 1 :]
                 )
                 if not abs_p.is_file() and not moved_by_tx:
                     raise UndoConflictError(f"Target file '{action.path}' does not exist for undo verification.")
@@ -328,8 +327,7 @@ class TransactionJournal:
                         )
             elif action.action_type == "create_file":
                 moved_by_tx = any(
-                    a.path == action.path and a.action_type == "move_file"
-                    for a in record.actions[idx + 1 :]
+                    a.path == action.path and a.action_type == "move_file" for a in record.actions[idx + 1 :]
                 )
                 if is_last_action_for_path and abs_p.is_file():
                     current_hash = compute_content_hash(abs_p.read_text(encoding="utf-8"))

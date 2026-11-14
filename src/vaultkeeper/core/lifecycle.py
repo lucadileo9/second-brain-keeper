@@ -213,8 +213,7 @@ def batch_rename_items(
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
     sources_being_renamed = {
-        (root_resolved / Path(s) if not Path(s).is_absolute() else Path(s)).resolve()
-        for s in mapping.keys()
+        (root_resolved / Path(s) if not Path(s).is_absolute() else Path(s)).resolve() for s in mapping.keys()
     }
 
     for src_raw, new_name in mapping.items():
@@ -251,9 +250,7 @@ def batch_rename_items(
 
         # Intra-batch target stem collisions
         if new_stem in new_stems_set and dest_path != src_p:
-            raise NamingError(
-                f"Batch rename failed pre-flight: Duplicate target stem '{new_stem}' within batch."
-            )
+            raise NamingError(f"Batch rename failed pre-flight: Duplicate target stem '{new_stem}' within batch.")
         new_stems_set.add(new_stem)
 
         # Disk destination collision
