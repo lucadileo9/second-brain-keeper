@@ -17,7 +17,7 @@ Il sistema è ingegnerizzato secondo un'**architettura a doppia testa**:
 1. **SDK Python Programmatico ([`Vault`](docs/architecture/facade.md))**: API orientata agli oggetti, priva di effetti collaterali a terminale (zero `print` o `sys.exit`), che scambia modelli di dominio immutabili ed è nativamente predisposta per script di automazione e server MCP per agenti AI autonomi.
 2. **Command Line Interface ([`vk`](docs/cli/overview.md))**: Interfaccia moderna a 20 comandi, arricchita con rendering `Rich`, simulazioni di sicurezza pre-volo (`--dry-run`), formati serializzabili (`--format json|yaml|csv`) e codici di ritorno semantici POSIX (`ExitCode`).
 
-Tutte le operazioni mutative sono incapsulate in un **Transaction Journal atomico con hashing crittografico SHA-256 e rollback LIFO**: qualsiasi creazione, rinomina, spostamento o cancellazione può essere annullata all'istante tramite `vk undo`.
+Tutte le operazioni mutative sono incapsulate in un **Transaction Journal atomico con hashing crittografico SHA-256 e rollback LIFO**: qualsiasi creazione, rinomina, spostamento o cancellazione può essere annullata all'istante tramite `sbk undo`.
 
 ---
 
@@ -25,13 +25,13 @@ Tutte le operazioni mutative sono incapsulate in un **Transaction Journal atomic
 
 ### Tramite Pip (Ambiente Virtuale)
 ```bash
-pip install obsidian-vaultkeeper
+pip install second-brain-keeper
 ```
 
 ### Installazione per Sviluppo e Contributi
 ```bash
 git clone https://github.com/lucadileo9/obsidian-vaultkeeper.git
-cd obsidian-vaultkeeper
+cd second-brain-keeper
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -43,31 +43,31 @@ pip install -e ".[dev]"
 
 ### 1. Inizializzare la Configurazione del Vault
 ```bash
-vk init --target /srv/storage/Vault
+sbk init --target /srv/storage/Vault
 ```
 Genera il file guida `vault.toml` con le convenzioni di denominazione (`Title_Case`), i tag ammessi, le estensioni consentite e le soglie di archiviazione.
 
 ### 2. Eseguire l'Audit Diagnostico a 5 Fasi
 ```bash
-vk audit
+sbk audit
 ```
 Verifica filesystem, denominazione, conformità frontmatter YAML, tassonomia controllata dei tag e integrità dei wikilink, calcolando il **Vault Health Score** (da 0.0 a 100.0).
 
 ### 3. Creare una Nuova Nota Standardizzata
 ```bash
-vk create "Architettura a Microservizi" --type Appunto --tags "tech/architettura,tech/cloud"
+sbk create "Architettura a Microservizi" --type Appunto --tags "tech/architettura,tech/cloud"
 ```
 Applica automaticamente l'auto-routing Johnny.Decimal verso la cartella corretta (`20-29_Istruzione/`), inietta le variabili nel template e aggiorna il MOC `00_Indice.md`.
 
 ### 4. Rinominare con Refactoring Globale dei Backlink
 ```bash
-vk rename 10-19_Progetti/vecchio_progetto.md Progetto_Varys
+sbk rename 10-19_Progetti/vecchio_progetto.md Progetto_Varys
 ```
 Rinomina il file e aggiorna simultaneamente tutti i collegamenti `[[...]]` che puntavano al vecchio nome all'interno dell'intero Vault.
 
 ### 5. Annullare un'Operazione Involontaria
 ```bash
-vk undo
+sbk undo
 ```
 Esegue un controllo di sicurezza crittografico SHA-256 (rifiuta il rollback se i file sono stati modificati nel frattempo da terzi) e ripristina lo stato precedente in ordine inverso.
 
@@ -79,26 +79,26 @@ Per la consultazione dettagliata di argomenti, opzioni ed esempi d'uso per ciasc
 
 | Comando | Sintassi di Esempio | Descrizione Operativa | Reversibile con `undo` |
 | :--- | :--- | :--- | :---: |
-| **`init`** | `vk init [--force]` | Genera il file di configurazione predefinito `vault.toml`. | No |
-| **`audit`** | `vk audit [--step 1..5] [--json out.json]` | Diagnostica a 5 fasi con calcolo del Vault Health Score. | No (Read-Only) |
-| **`check-links`** | `vk check-links [--target <path>]` | Rileva wikilink rotti ed embed multimediali orfani. | No (Read-Only) |
-| **`clean-attachments`** | `vk clean-attachments [--dry-run]` | Bonifica file orfani tramite soft-delete reversibile in `.trash/`. | **Sì** |
-| **`normalize-names`** | `vk normalize-names [--dry-run]` | Converte in `Title_Case` e riscrive contestualmente i backlink. | **Sì** |
-| **`generate-indices`** | `vk generate-indices [--all] [--dry-run]` | Genera o aggiorna i file MOC `00_Indice.md` di cartella. | No (Idempotente) |
-| **`frontmatter`** | `vk frontmatter set-type --target n.md --type Appunto` | Ispeziona o modifica metadati YAML (`tipo`, tag). | **Sì** |
-| **`disambiguate`** | `vk disambiguate [--target <dir>]` | Rileva collisioni di stem omonimi tra cartelle diverse. | No (Read-Only) |
-| **`history`** | `vk history [--limit 20] [--format json]` | Mostra lo storico delle transazioni atomiche del Journal. | No (Read-Only) |
-| **`undo`** | `vk undo [--tx <id>] [--dry-run]` | Ripristina lo stato del filesystem precedente con verifica SHA-256. | **Sì** (Rollback) |
-| **`rename`** | `vk rename vecchio.md Nuovo.md` | Rinomina una nota con sincronizzazione globale di backlink e MOC. | **Sì** |
-| **`move`** | `vk move nota.md 10-19_Progetti/` | Sposta file o cartelle aggiornando entrambi i MOC di area. | **Sì** |
-| **`archive`** | `vk archive Progetto_X/ [--no-tombstone]` | Trasferisce in cold storage e deposita scheda tombstone. | **Sì** |
-| **`offload`** | `vk offload [target] [--dry-run]` | Sposta allegati pesanti (>50MB) in cold storage rimpiazzando i link. | **Sì** |
-| **`tags`** | `vk tags add tech/rust [--section "Tecnologia"]` | Gestisce il vocabolario controllato `00_Tassonomia_Tag.md`. | **Sì** |
-| **`config`** | `vk config set naming_style Title_Case` | Ispeziona o modifica impostazioni a caldo in `vault.toml`. | **Sì** |
-| **`search`** | `vk search "query" [--tag t] [--type Appunto]` | Ricerca full-text e filtri combinatori multi-criterio. | No (Read-Only) |
-| **`graph-health`** | `vk graph-health [--format md]` | Analisi topologica del grafo (top hubs, dead-ends, orfani). | No (Read-Only) |
-| **`map`** | `vk map [--output Mappa.md] [--format json]` | Cartografia strutturale Johnny.Decimal e volumi del Vault. | No (Read-Only) |
-| **`create`** | `vk create "Titolo" --type Appunto [--tags ...]` | Creazione standardizzata con auto-routing, template e MOC. | **Sì** |
+| **`init`** | `sbk init [--force]` | Genera il file di configurazione predefinito `vault.toml`. | No |
+| **`audit`** | `sbk audit [--step 1..5] [--json out.json]` | Diagnostica a 5 fasi con calcolo del Vault Health Score. | No (Read-Only) |
+| **`check-links`** | `sbk check-links [--target <path>]` | Rileva wikilink rotti ed embed multimediali orfani. | No (Read-Only) |
+| **`clean-attachments`** | `sbk clean-attachments [--dry-run]` | Bonifica file orfani tramite soft-delete reversibile in `.trash/`. | **Sì** |
+| **`normalize-names`** | `sbk normalize-names [--dry-run]` | Converte in `Title_Case` e riscrive contestualmente i backlink. | **Sì** |
+| **`generate-indices`** | `sbk generate-indices [--all] [--dry-run]` | Genera o aggiorna i file MOC `00_Indice.md` di cartella. | No (Idempotente) |
+| **`frontmatter`** | `sbk frontmatter set-type --target n.md --type Appunto` | Ispeziona o modifica metadati YAML (`tipo`, tag). | **Sì** |
+| **`disambiguate`** | `sbk disambiguate [--target <dir>]` | Rileva collisioni di stem omonimi tra cartelle diverse. | No (Read-Only) |
+| **`history`** | `sbk history [--limit 20] [--format json]` | Mostra lo storico delle transazioni atomiche del Journal. | No (Read-Only) |
+| **`undo`** | `sbk undo [--tx <id>] [--dry-run]` | Ripristina lo stato del filesystem precedente con verifica SHA-256. | **Sì** (Rollback) |
+| **`rename`** | `sbk rename vecchio.md Nuovo.md` | Rinomina una nota con sincronizzazione globale di backlink e MOC. | **Sì** |
+| **`move`** | `sbk move nota.md 10-19_Progetti/` | Sposta file o cartelle aggiornando entrambi i MOC di area. | **Sì** |
+| **`archive`** | `sbk archive Progetto_X/ [--no-tombstone]` | Trasferisce in cold storage e deposita scheda tombstone. | **Sì** |
+| **`offload`** | `sbk offload [target] [--dry-run]` | Sposta allegati pesanti (>50MB) in cold storage rimpiazzando i link. | **Sì** |
+| **`tags`** | `sbk tags add tech/rust [--section "Tecnologia"]` | Gestisce il vocabolario controllato `00_Tassonomia_Tag.md`. | **Sì** |
+| **`config`** | `sbk config set naming_style Title_Case` | Ispeziona o modifica impostazioni a caldo in `vault.toml`. | **Sì** |
+| **`search`** | `sbk search "query" [--tag t] [--type Appunto]` | Ricerca full-text e filtri combinatori multi-criterio. | No (Read-Only) |
+| **`graph-health`** | `sbk graph-health [--format md]` | Analisi topologica del grafo (top hubs, dead-ends, orfani). | No (Read-Only) |
+| **`map`** | `sbk map [--output Mappa.md] [--format json]` | Cartografia strutturale Johnny.Decimal e volumi del Vault. | No (Read-Only) |
+| **`create`** | `sbk create "Titolo" --type Appunto [--tags ...]` | Creazione standardizzata con auto-routing, template e MOC. | **Sì** |
 
 ---
 
@@ -108,16 +108,16 @@ Per migrazioni massive o riorganizzazioni rapide, `vk` supporta l'opzione `--bat
 
 ```bash
 # Spostamento batch di note verso cartelle di destinazione
-vk move --batch batch_move.json
+sbk move --batch batch_move.json
 
 # Rinomina batch con refactoring globale di tutti i wikilink
-vk rename --batch batch_rename.json
+sbk rename --batch batch_rename.json
 
 # Assegnazione massiva del tipo di nota (Frontmatter)
-vk frontmatter set-type --batch batch_types.json
+sbk frontmatter set-type --batch batch_types.json
 
 # Iniezione massiva di tag tassonomici (Frontmatter)
-vk frontmatter add-tags --batch batch_tags.json
+sbk frontmatter add-tags --batch batch_tags.json
 ```
 
 I file JSON adottano la sintassi dizionario `{sorgente: valore_target}`. I template pronti all'uso sono consultabili nella cartella [`examples/batch/`](examples/batch/).
@@ -129,7 +129,7 @@ I file JSON adottano la sintassi dizionario `{sorgente: valore_target}`. I templ
 La classe Facade [`Vault`](docs/architecture/facade.md) espone un'interfaccia unificata per script di automazione o agenti intelligenti:
 
 ```python
-from vaultkeeper import Vault
+from sbk import Vault
 
 # Inizializzazione della Facade
 vault = Vault(root_path="/srv/storage/Vault")
@@ -190,7 +190,7 @@ docs/
 
 Per eseguire localmente la suite di test e le verifiche di qualità:
 ```bash
-.venv/bin/pytest --cov=vaultkeeper --cov-report=term-missing
+.venv/bin/pytest --cov=sbk --cov-report=term-missing
 .venv/bin/mypy src/ tests/
 .venv/bin/ruff check src/ tests/
 .venv/bin/bandit -r src/ -ll

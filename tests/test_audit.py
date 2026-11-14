@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.audit import compute_health_score, run_audit
-from vaultkeeper.models import PhaseResult
+from sbk.config import load_vault_config
+from sbk.core.audit import compute_health_score, run_audit
+from sbk.models import PhaseResult
 
 
 def test_run_full_audit(mock_vault: Path) -> None:

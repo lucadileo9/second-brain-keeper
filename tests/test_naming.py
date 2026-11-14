@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.naming import (
+from sbk.config import load_vault_config
+from sbk.core.naming import (
     clean_disallowed_characters,
     normalize_name,
     normalize_stem,
     rename_vault_item,
     update_wikilinks_in_content,
 )
-from vaultkeeper.core.traversal import build_vault_catalog
+from sbk.core.traversal import build_vault_catalog
 
 
 def test_clean_disallowed_characters() -> None:
@@ -90,7 +90,7 @@ def test_rename_errors_and_same_name(mock_vault: Path) -> None:
     """Verify rename edge cases: target not found, same destination, and collision."""
     import pytest
 
-    from vaultkeeper.exceptions import NamingError
+    from sbk.exceptions import NamingError
 
     cfg = load_vault_config(root_path=mock_vault)
     catalog = build_vault_catalog(cfg)

@@ -1,23 +1,23 @@
-# Architettura di Sistema — Obsidian VaultKeeper
+# Architettura di Sistema — Second Brain Keeper (sbk)
 
-Questo documento definisce i principi architetturali, i pattern di progettazione e le convenzioni strutturali alla base di **`obsidian-vaultkeeper`** (`vk`).
+Questo documento definisce i principi architetturali, i pattern di progettazione e le convenzioni strutturali alla base di **`second-brain-keeper`** (`vk`).
 
 ---
 
 ## 1. Visione d'Insieme & Filosofia Architetturale
 
-`obsidian-vaultkeeper` è un motore di governance per archivi documentali basati su Markdown e Second Brain Obsidian. 
+`second-brain-keeper` è un motore di governance per archivi documentali basati su Markdown e Second Brain Obsidian. 
 È ingegnerizzato secondo una **Layered Architecture** a quattro livelli con dipendenze rigorosamente monodirezionali:
 
 ```mermaid
 flowchart TD
     subgraph Presentation ["1. Presentation Layer (CLI & Script Esterni)"]
-        CLI["CLI Commands (vk init, audit, create, ...)"]
+        CLI["CLI Commands (sbk init, audit, create, ...)"]
         API_CLIENT["Script Python & Agenti AI (Varys)"]
     end
 
     subgraph Facade ["2. High-Level Facade Layer"]
-        VAULT["Vault Facade (src/vaultkeeper/vault.py)"]
+        VAULT["Vault Facade (src/sbk/vault.py)"]
     end
 
     subgraph Core ["3. Computational Core Engine Layer"]
@@ -46,39 +46,39 @@ flowchart TD
 
 ## 2. I Cinque Pilastri Ingegneristici
 
-### A. Facade Pattern Unificato ([`Vault`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/docs/architecture/facade.md))
-Nessun client esterno (né la CLI né uno script o una Skill di Varys) invoca direttamente i moduli interni del core. Tutte le interazioni transitano attraverso l'unica classe [`Vault`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/src/vaultkeeper/vault.py), che coordina configurazione, cache in memoria e apertura delle transazioni.
+### A. Facade Pattern Unificato ([`Vault`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md))
+Nessun client esterno (né la CLI né uno script o una Skill di Varys) invoca direttamente i moduli interni del core. Tutte le interazioni transitano attraverso l'unica classe [`Vault`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/vault.py), che coordina configurazione, cache in memoria e apertura delle transazioni.
 
 ### B. Pure Computational Headless API
 Tutti i metodi del Core e della Facade sono puramente computazionali:
 - **Zero chiamate a `print()` o `sys.exit()`**: L'output per l'utente è confinato esclusivamente nel presentation layer.
 - **Ritorno di modelli immutabili tipizzati**: I metodi restituiscono dataclass fortemente tipizzate o tuple primitive.
-- **Eccezioni gerarchiche dedicate**: Errori operativi o violazioni di governance sollevano sottoclassi di `VaultKeeperError` (`CreationError`, `NamingError`, `TaxonomyError`, `UndoConflictError`, `VaultNotFoundError`).
+- **Eccezioni gerarchiche dedicate**: Errori operativi o violazioni di governance sollevano sottoclassi di `SBKError` (`CreationError`, `NamingError`, `TaxonomyError`, `UndoConflictError`, `VaultNotFoundError`).
 
-### C. Write-Ahead Action Journaling & Rollback LIFO ([`transaction_journal.md`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/docs/architecture/transaction_journal.md))
-Tutte le mutazioni su filesystem (creazione, rinomina, spostamento, archiviazione, offload, alterazione frontmatter, modifica tag) vengono eseguite all'interno di un blocco [`TransactionContext`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/src/vaultkeeper/core/journal.py#L23-L229).
+### C. Write-Ahead Action Journaling & Rollback LIFO ([`transaction_journal.md`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/transaction_journal.md))
+Tutte le mutazioni su filesystem (creazione, rinomina, spostamento, archiviazione, offload, alterazione frontmatter, modifica tag) vengono eseguite all'interno di un blocco [`TransactionContext`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/core/journal.py#L23-L229).
 - Viene registrato l'hash crittografico SHA-256 pre e post mutazione.
 - Se il blocco fallisce con un'eccezione, il context manager applica un **auto-rollback in-memory immediato**.
-- In fase di `vk undo`, un controllo pre-flight verifica che nessun file sia stato modificato esternamente (anti-conflitto), prima di disfare le micro-azioni in ordine strettamente inverso (**LIFO**).
+- In fase di `sbk undo`, un controllo pre-flight verifica che nessun file sia stato modificato esternamente (anti-conflitto), prima di disfare le micro-azioni in ordine strettamente inverso (**LIFO**).
 
 ### D. Indicizzazione $O(1)$ in Memoria (`VaultCatalog`)
-Per evitare accessi ricorsivi ripetuti a disco durante l'esecuzione di comandi complessi (es. riscrittura globale dei wikilink o audit), [`VaultCatalog`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/docs/architecture/models.md#vaultcatalog) mappa in memoria tutti gli stem normalizzati, nomi file e percorsi. 
+Per evitare accessi ricorsivi ripetuti a disco durante l'esecuzione di comandi complessi (es. riscrittura globale dei wikilink o audit), [`VaultCatalog`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#vaultcatalog) mappa in memoria tutti gli stem normalizzati, nomi file e percorsi. 
 Qualsiasi operazione mutativa invoca automaticamente `Vault.refresh()`, invalidando la cache in modo trasparente.
 
-### E. Rigida Separazione dei Modelli di Dominio ([`models.md`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/docs/architecture/models.md))
-I 23 modelli di dominio sono ripartiti in 5 moduli ad alta coesione all'interno di `vaultkeeper.models/` (`config`, `entities`, `journal`, `results`, `telemetry`), azzerando le dipendenze circolari ed esponendo un contratto retrocompatibile in `__all__`.
+### E. Rigida Separazione dei Modelli di Dominio ([`models.md`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md))
+I 23 modelli di dominio sono ripartiti in 5 moduli ad alta coesione all'interno di `sbk.models/` (`config`, `entities`, `journal`, `results`, `telemetry`), azzerando le dipendenze circolari ed esponendo un contratto retrocompatibile in `__all__`.
 
 ---
 
 ## 3. Mappa Strutturale del Repository
 
 ```text
-obsidian-vaultkeeper/
+second-brain-keeper/
 ├── pyproject.toml              # Definizione pacchetto, dipendenze (Click, Rich, PyYAML, Proteus) e tool config
 ├── README.md                   # Landing page esecutiva, quickstart e quick reference CLI
 ├── ARCHITECTURE.md             # Questo documento
 ├── src/
-│   └── vaultkeeper/
+│   └── sbk/
 │       ├── __init__.py         # Esportazione versione e classe Vault
 │       ├── config.py           # Caricamento e validazione vault.toml
 │       ├── exceptions.py       # Gerarchia delle eccezioni tipizzate di sistema
@@ -123,16 +123,16 @@ obsidian-vaultkeeper/
 ## 4. Guida all'Estensione del Sistema
 
 ### Come Aggiungere un Nuovo Metodo alla Facade
-1. Implementare la logica algoritmica pura all'interno del modulo appropriato in `src/vaultkeeper/core/`.
+1. Implementare la logica algoritmica pura all'interno del modulo appropriato in `src/sbk/core/`.
 2. Se l'operazione comporta mutazioni sul filesystem:
    - Ricevere un parametro opzionale `transaction: Optional[TransactionContext] = None`.
    - Utilizzare `transaction.write_content()`, `transaction.move_file()`, `transaction.create_file()` o `transaction.delete_file()`.
-3. Esporre il metodo in [`Vault`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/src/vaultkeeper/vault.py), incapsulandone l'esecuzione all'interno di `with self.journal.begin_transaction(...) as tx:` se mutativo.
+3. Esporre il metodo in [`Vault`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/vault.py), incapsulandone l'esecuzione all'interno di `with self.journal.begin_transaction(...) as tx:` se mutativo.
 4. Concludere con `self.refresh()` per invalidare l'indice in memoria.
 5. Aggiungere test unitari in `tests/test_vault.py` e nel modulo core di competenza.
 
 ### Come Aggiungere un Nuovo Comando CLI
-1. Creare il modulo handler in `src/vaultkeeper/cli/commands/<nome>.py`.
+1. Creare il modulo handler in `src/sbk/cli/commands/<nome>.py`.
 2. Ricevere gli argomenti `args` e il `logger`, invocare il metodo corrispondente su `Vault` e formattare l'output con `OutputFormatter`.
 3. Importare e registrare il comando nel router `main.py` aggiungendo il sotto-parser con argomenti ed help.
 4. Restituire un codice standard `ExitCode.SUCCESS`, `ExitCode.ERROR` o `ExitCode.ISSUES_FOUND`.

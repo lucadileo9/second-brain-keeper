@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.taxonomy import TaxonomyEngine
-from vaultkeeper.exceptions import TaxonomyError
-from vaultkeeper.vault import Vault
+from sbk.config import load_vault_config
+from sbk.core.taxonomy import TaxonomyEngine
+from sbk.exceptions import TaxonomyError
+from sbk.vault import Vault
 
 
 def test_taxonomy_loading_and_search(mock_vault_with_config: Path) -> None:

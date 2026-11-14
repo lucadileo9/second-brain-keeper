@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from vaultkeeper.utils.helpers import compute_file_hash, format_bytes, truncate_text
+from sbk.utils.helpers import compute_file_hash, format_bytes, truncate_text
 
 
 def test_format_bytes() -> None:
@@ -31,7 +31,7 @@ def test_compute_file_hash(empty_temp_dir: Path) -> None:
 
 def test_is_ignored_path() -> None:
     """Verify ignored path filter."""
-    from vaultkeeper.core.traversal import is_ignored_path
+    from sbk.core.traversal import is_ignored_path
 
     ignored = {".obsidian", ".trash", "node_modules"}
     assert is_ignored_path(Path("/vault/.obsidian/plugins"), ignored) is True

@@ -4,7 +4,7 @@ import json
 
 import yaml
 
-from vaultkeeper.utils.formatters import OutputFormat, format_output, render_markdown_table
+from sbk.utils.formatters import OutputFormat, format_output, render_markdown_table
 
 
 def test_render_markdown_table() -> None:

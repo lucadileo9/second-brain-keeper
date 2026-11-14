@@ -1,6 +1,6 @@
 # Architettura del Transaction Journal e Rollback Engine
 
-Il modulo [`src/vaultkeeper/core/journal.py`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/src/vaultkeeper/core/journal.py) implementa il motore transazionale di `obsidian-vaultkeeper`. 
+Il modulo [`src/sbk/core/journal.py`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/core/journal.py) implementa il motore transazionale di `second-brain-keeper`. 
 Il suo obiettivo è fornire garanzie di affidabilità di tipo **ACID-like** (Atomicità, Consistenza, Isolamento logico, Durabilità) su normali file system (ext4, NTFS, APFS), senza richiedere l'installazione di database esterni come SQLite o PostgreSQL.
 
 Ogni singola operazione di mutazione (creazione, rinomina, spostamento, archiviazione, offload, alterazione frontmatter, modifica tag) è gestita come una transazione atomica reversibile.
@@ -14,8 +14,8 @@ La manipolazione di un Second Brain di oltre 3.900 note comporta rischi sistemic
 - **Sovrascrittura accidentale (Lost Updates)**: Se l'utente tenta di annullare un'operazione eseguita ore prima su una nota che nel frattempo è stata modificata manualmente, un rollback cieco distruggerebbe il nuovo contenuto.
 - **Dispersione di spazio**: Mantenere copie integrali di backup del Vault per ogni comando occuperebbe gigabyte di storage.
 
-### I Principi Solutivi di VaultKeeper
-1. **Delta Journaling compresso**: Vengono registrate unicamente le differenze pre/post stato e i percorsi, serializzati in JSON e compressi con Gzip in `.vaultkeeper/history/<tx_id>.json.gz`.
+### I Principi Solutivi di Second Brain Keeper
+1. **Delta Journaling compresso**: Vengono registrate unicamente le differenze pre/post stato e i percorsi, serializzati in JSON e compressi con Gzip in `.sbk/history/<tx_id>.json.gz`.
 2. **Pre-flight Hash Matching (SHA-256)**: Prima di applicare qualsiasi rollback, il motore calcola l'impronta crittografica attuale dei file coinvolti e la confronta con lo stato registrato. Se c'è discrepanza, l'operazione viene abortita sollevando `UndoConflictError`.
 3. **Inversione Topologica LIFO**: Le azioni che compongono la transazione vengono disfatte in ordine strettamente inverso rispetto a quello di esecuzione.
 4. **Auto-Rollback In-Memory su Eccezione**: Se durante l'esecuzione di un blocco transazionale si verifica un errore non gestito, il context manager annulla istantaneamente tutte le micro-azioni già apportate su disco prima di propagare l'eccezione.
@@ -41,7 +41,7 @@ stateDiagram-v2
     InFlightRollback --> Fallita: Ripristino azioni in ordine inverso
     Fallita --> [*]: Propaga eccezione al chiamante
 
-    Commit --> Persistita: Scrittura .vaultkeeper/history/<tx_id>.json.gz
+    Commit --> Persistita: Scrittura .sbk/history/<tx_id>.json.gz
     Persistita --> Pruning: Mantenimento max N transazioni (default 100)
     Pruning --> Attiva: Pronta per eventuale undo
 
@@ -115,7 +115,7 @@ Classe supervisore responsabile della persistenza, consultazione e rollback dell
 - **Attributi**:
   - `root_path: Path`: Percorso assoluto della radice del Vault.
   - `max_transactions: int`: Numero massimo di file di storico conservati (default 100).
-  - `history_dir: Path`: Directory `.vaultkeeper/history/` all'interno del Vault.
+  - `history_dir: Path`: Directory `.sbk/history/` all'interno del Vault.
 
 #### Metodi Principali
 
@@ -123,7 +123,7 @@ Classe supervisore responsabile della persistenza, consultazione e rollback dell
 Genera una nuova istanza di `TransactionContext` pronta per essere utilizzata in una clausola `with`.
 
 ##### `list_transactions(limit: int = 20) -> List[TransactionRecord]`
-Scansiona `.vaultkeeper/history/*.json.gz`, decomprime e deserializza i record, ordinandoli dal più recente al meno recente.
+Scansiona `.sbk/history/*.json.gz`, decomprime e deserializza i record, ordinandoli dal più recente al meno recente.
 
 ##### `get_transaction(tx_id: str) -> Optional[TransactionRecord]`
 Carica e restituisce il record completo per uno specifico identificativo transazione.

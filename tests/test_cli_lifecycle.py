@@ -1,12 +1,12 @@
-"""Integration tests for lifecycle CLI subcommands: vk rename, vk move, vk archive, and vk offload."""
+"""Integration tests for lifecycle CLI subcommands: sbk rename, sbk move, sbk archive, and sbk offload."""
 
 from pathlib import Path
 
-from vaultkeeper.cli.main import main
+from sbk.cli.main import main
 
 
 def test_cli_rename_and_undo(mock_vault_with_config: Path) -> None:
-    """Verify vk rename updates file, incoming links, and undo reverts."""
+    """Verify sbk rename updates file, incoming links, and undo reverts."""
     target_note = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
     referencing_note = mock_vault_with_config / "10-19_Progetti" / "Progetto_Alpha.md"
 
@@ -39,7 +39,7 @@ def test_cli_rename_and_undo(mock_vault_with_config: Path) -> None:
 
 
 def test_cli_rename_dry_run_and_errors(mock_vault_with_config: Path) -> None:
-    """Verify vk rename dry-run and error handling."""
+    """Verify sbk rename dry-run and error handling."""
     target_note = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
 
     # Dry-run
@@ -83,7 +83,7 @@ def test_cli_rename_dry_run_and_errors(mock_vault_with_config: Path) -> None:
 
 
 def test_cli_move_and_undo(mock_vault_with_config: Path) -> None:
-    """Verify vk move relocates file, updates indices, and undo reverts."""
+    """Verify sbk move relocates file, updates indices, and undo reverts."""
     target_note = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
     dest_dir = mock_vault_with_config / "10-19_Progetti"
 
@@ -115,7 +115,7 @@ def test_cli_move_and_undo(mock_vault_with_config: Path) -> None:
 
 
 def test_cli_move_dry_run_and_errors(mock_vault_with_config: Path) -> None:
-    """Verify vk move dry-run and error conditions."""
+    """Verify sbk move dry-run and error conditions."""
     target_note = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
     dest_dir = mock_vault_with_config / "10-19_Progetti"
 
@@ -148,7 +148,7 @@ def test_cli_move_dry_run_and_errors(mock_vault_with_config: Path) -> None:
 
 
 def test_cli_archive_and_undo(mock_vault_with_config: Path) -> None:
-    """Verify vk archive moves to cold storage, leaves tombstone, and undo restores."""
+    """Verify sbk archive moves to cold storage, leaves tombstone, and undo restores."""
     note = mock_vault_with_config / "10-19_Progetti" / "Progetto_Alpha.md"
 
     # Archive via CLI
@@ -173,7 +173,7 @@ def test_cli_archive_and_undo(mock_vault_with_config: Path) -> None:
 
 
 def test_cli_archive_no_tombstone_and_dry_run(mock_vault_with_config: Path) -> None:
-    """Verify vk archive --no-tombstone and --dry-run flags."""
+    """Verify sbk archive --no-tombstone and --dry-run flags."""
     note = mock_vault_with_config / "10-19_Progetti" / "Progetto_Alpha.md"
 
     # Dry-run
@@ -221,7 +221,7 @@ def test_cli_archive_no_tombstone_and_dry_run(mock_vault_with_config: Path) -> N
 
 
 def test_cli_offload_and_undo(mock_vault_with_config: Path) -> None:
-    """Verify vk offload migrates media, updates notes, and undo restores."""
+    """Verify sbk offload migrates media, updates notes, and undo restores."""
     heavy_file = mock_vault_with_config / "90-99_Allegati" / "Heavy_Video.mp4"
     heavy_file.write_bytes(b"B" * 2048)
 
@@ -263,7 +263,7 @@ def test_cli_offload_and_undo(mock_vault_with_config: Path) -> None:
 
 
 def test_cli_offload_empty_and_error(mock_vault_with_config: Path) -> None:
-    """Verify vk offload when no files match or target is invalid."""
+    """Verify sbk offload when no files match or target is invalid."""
     # When no heavy files exist
     code_empty = main(["--root", str(mock_vault_with_config), "offload"])
     assert code_empty == 0

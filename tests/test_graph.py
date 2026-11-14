@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.graph import GraphTelemetry
-from vaultkeeper.vault import Vault
+from sbk.config import load_vault_config
+from sbk.core.graph import GraphTelemetry
+from sbk.vault import Vault
 
 
 def test_graph_telemetry_metrics(mock_vault_with_config: Path) -> None:

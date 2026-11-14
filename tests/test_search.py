@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.search import SearchEngine
-from vaultkeeper.vault import Vault
+from sbk.config import load_vault_config
+from sbk.core.search import SearchEngine
+from sbk.vault import Vault
 
 
 def test_search_by_text_query(mock_vault_with_config: Path) -> None:

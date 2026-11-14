@@ -1,6 +1,6 @@
 # Catalogo del Motore Computazionale (Core Modules)
 
-La cartella [`src/vaultkeeper/core/`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/src/vaultkeeper/core) racchiude l'intelligenza algoritmica di `obsidian-vaultkeeper`.
+La cartella [`src/sbk/core/`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/core) racchiude l'intelligenza algoritmica di `second-brain-keeper`.
 Ciascun modulo è progettato per operare in modalità headless, disaccoppiato da interfacce utente o formattatori di terminale, esponendo funzioni pure o classi specializzate che manipolano modelli di dominio immutabili.
 
 ---
@@ -64,10 +64,10 @@ flowchart TD
 ## 1. `traversal.py` — Scansione e Indicizzazione del Filesystem
 
 ### Scopo e Responsabilità
-Fornisce gli strumenti per percorrere l'albero delle cartelle del Vault in modo sicuro, escludendo cartelle nascoste o di sistema (`.obsidian`, `.trash`, `.git`, `.venv`) e costruendo l'indice in memoria [`VaultCatalog`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/docs/architecture/models.md#vaultcatalog).
+Fornisce gli strumenti per percorrere l'albero delle cartelle del Vault in modo sicuro, escludendo cartelle nascoste o di sistema (`.obsidian`, `.trash`, `.git`, `.venv`) e costruendo l'indice in memoria [`VaultCatalog`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#vaultcatalog).
 
 ### Dipendenze
-- **Usa:** `VaultConfig`, `VaultCatalog` da `vaultkeeper.models`.
+- **Usa:** `VaultConfig`, `VaultCatalog` da `sbk.models`.
 - **Usato da:** `Vault.catalog`, `audit.py`, `links.py`, `indices.py`, `search.py`, `lifecycle.py`.
 
 ### Funzioni Esposte
@@ -98,7 +98,7 @@ Fornisce gli strumenti per percorrere l'albero delle cartelle del Vault in modo 
 Incapsula un file Markdown garantendo una manipolazione che preservi l'esatta formattazione preesistente: non altera i byte circostanti, rispetta i terminatori di riga nativi (`\r\n` su Windows, `\n` su POSIX) e consente modifiche atomiche a frontmatter, tag e wikilink.
 
 ### Dipendenze
-- **Usa:** `Frontmatter` da `vaultkeeper.models`, `parse_note_content` e `update_frontmatter` da `.frontmatter`.
+- **Usa:** `Frontmatter` da `sbk.models`, `parse_note_content` e `update_frontmatter` da `.frontmatter`.
 - **Usato da:** `Vault.get_document()`, `lifecycle.py`, test suite.
 
 ### Classe `MarkdownDocument`
@@ -132,7 +132,7 @@ Incapsula un file Markdown garantendo una manipolazione che preservi l'esatta fo
 Esegue il parsing dei metadati YAML posizionati all'inizio dei file Markdown, garantendo la compatibilità con le convenzioni di Obsidian e isolando direttive C o codici esadecimali dall'estrazione dei tag.
 
 ### Dipendenze
-- **Usa:** `PyYAML` (`yaml.safe_load`), `Frontmatter`, `Note` da `vaultkeeper.models`.
+- **Usa:** `PyYAML` (`yaml.safe_load`), `Frontmatter`, `Note` da `sbk.models`.
 - **Usato da:** `document.py`, `audit.py`, `indices.py`, `Vault.get_note()`.
 
 ### Funzioni Esposte
@@ -383,4 +383,4 @@ Genera la vista cartografica d'insieme del Vault, riassumendo per ciascuna carte
 ## 15. `journal.py` — Motore Transazionale
 
 Modulo dedicato alla gestione delle transazioni atomiche e del rollback LIFO con verifica SHA-256 anti-conflitto.
-La disamina approfondita di questo modulo è documentata integralmente in [`docs/architecture/transaction_journal.md`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/docs/architecture/transaction_journal.md).
+La disamina approfondita di questo modulo è documentata integralmente in [`docs/architecture/transaction_journal.md`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/transaction_journal.md).

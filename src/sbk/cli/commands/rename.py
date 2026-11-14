@@ -1,0 +1,93 @@
+"""Implementation of 'sbk rename' command."""
+
+import logging
+from argparse import Namespace
+
+from ...exceptions import NamingError, VaultKeeperError
+from ...vault import Vault
+from ..constants import EXIT_ERROR, EXIT_SUCCESS
+
+
+def handle_rename(args: Namespace, logger: logging.Logger) -> int:
+    """Rename a note or asset with global wikilink refactoring and index synchronization."""
+    try:
+        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
+    except Exception as exc:
+        logger.error("Failed to initialize vault: %s", exc)
+        return EXIT_ERROR
+
+    batch_arg = getattr(args, "batch", None)
+    file_arg = getattr(args, "file", None)
+    new_name_arg = getattr(args, "new_name", None)
+    skip_links = getattr(args, "skip_links", False)
+    dry_run = getattr(args, "dry_run", False)
+    prefix = "[DRY-RUN] " if dry_run else ""
+
+    if batch_arg:
+        try:
+            results = v.batch_rename(
+                mapping=batch_arg,
+                skip_links=skip_links,
+                dry_run=dry_run,
+            )
+        except (NamingError, VaultKeeperError) as exc:
+            logger.error("Batch rename rejected: %s", exc)
+            return EXIT_ERROR
+        except Exception as exc:
+            logger.error("Unexpected error during batch rename: %s", exc)
+            return EXIT_ERROR
+
+        total_links = 0
+        for res in results:
+            if res.old_path == res.new_path:
+                logger.info("%sUnchanged: %s", prefix, res.old_path.name)
+            else:
+                logger.info(
+                    "%sRenamed: %s -> %s (links updated: %d)",
+                    prefix,
+                    res.old_path.name,
+                    res.new_path.name,
+                    res.updated_links_count,
+                )
+                total_links += res.updated_links_count
+
+        tx_id = results[0].tx_id if results and results[0].tx_id else None
+        tx_info = f" (Tx: {tx_id})" if tx_id else ""
+        logger.info(
+            "%sBatch rename completed successfully: %d items renamed, %d links updated%s.",
+            prefix,
+            len(results),
+            total_links,
+            tx_info,
+        )
+        return EXIT_SUCCESS
+
+    if not file_arg or not new_name_arg:
+        logger.error("Missing arguments: specify both <file> and <new_name>, or use --batch <file.json>.")
+        return EXIT_ERROR
+
+    try:
+        res = v.rename(
+            old_path=file_arg,
+            new_name=new_name_arg,
+            skip_links=skip_links,
+            dry_run=dry_run,
+        )
+    except (NamingError, VaultKeeperError) as exc:
+        logger.error("Rename rejected: %s", exc)
+        return EXIT_ERROR
+    except Exception as exc:
+        logger.error("Unexpected error during rename: %s", exc)
+        return EXIT_ERROR
+
+    if res.old_path == res.new_path:
+        logger.info("Source and target names are identical. No changes required.")
+        return EXIT_SUCCESS
+
+    logger.info("%sRenamed: %s -> %s", prefix, res.old_path.name, res.new_path.name)
+    logger.info("  - Updated incoming wikilinks: %d", res.updated_links_count)
+    logger.info("  - Folder index synchronized: %s", "Yes" if res.index_updated else "No")
+    if res.tx_id:
+        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+
+    return EXIT_SUCCESS

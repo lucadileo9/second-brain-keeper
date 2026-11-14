@@ -1,4 +1,4 @@
-"""Pytest fixtures for VaultKeeper test suite."""
+"""Pytest fixtures for SBK (Second Brain Keeper) test suite."""
 
 import tempfile
 from pathlib import Path
@@ -6,7 +6,7 @@ from typing import Generator
 
 import pytest
 
-from vaultkeeper.config import generate_default_config_content
+from sbk.config import generate_default_config_content
 
 
 @pytest.fixture

@@ -3,16 +3,16 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "obsidian-vaultkeeper"
+name = "second-brain-keeper"
 version = "1.1.0"
 description = "Universal Second Brain governance engine, link validator and maintenance toolkit for Obsidian and document vaults"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "GPL-3.0-or-later"
+license = { text = "GPL-3.0-or-later" }
 authors = [
     { name = "Luca Di Leo", email = "lucadileo70@gmail.com" }
 ]
-keywords = ["obsidian", "second-brain", "pkm", "knowledge-management", "vault", "cli"]
+keywords = ["second-brain", "pkm", "knowledge-management", "obsidian", "vault", "cli"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -40,7 +40,8 @@ dev = [
 ]
 
 [project.scripts]
-vk = "vaultkeeper.cli.main:main"
+sbk = "sbk.cli.main:main"
+vk = "sbk.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

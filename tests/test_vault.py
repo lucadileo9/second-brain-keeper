@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from vaultkeeper import Vault
+from sbk import Vault
 
 
 def test_vault_facade_initialization(mock_vault: Path) -> None:

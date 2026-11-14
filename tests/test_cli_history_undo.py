@@ -1,18 +1,18 @@
-"""Integration tests for 'vk history' and 'vk undo' CLI subcommands."""
+"""Integration tests for 'sbk history' and 'sbk undo' CLI subcommands."""
 
 from pathlib import Path
 
-from vaultkeeper.cli.main import main
+from sbk.cli.main import main
 
 
 def test_cli_history_empty(mock_vault: Path, capsys) -> None:
-    """Verify vk history when no transactions have occurred."""
+    """Verify sbk history when no transactions have occurred."""
     code = main(["--root", str(mock_vault), "history"])
     assert code == 0
 
 
 def test_cli_normalize_names_and_undo(mock_vault: Path) -> None:
-    """Verify normalizing names records transaction and vk undo restores previous filenames."""
+    """Verify normalizing names records transaction and sbk undo restores previous filenames."""
     # Create non-conformant note
     bad_note = mock_vault / "10-19_Progetti" / "mio progetto disordinato.md"
     bad_note.write_text("# Test disordinato", encoding="utf-8")
@@ -42,7 +42,7 @@ def test_cli_normalize_names_and_undo(mock_vault: Path) -> None:
 
 
 def test_cli_clean_attachments_and_undo(mock_vault: Path) -> None:
-    """Verify soft-cleaning orphan attachments and restoring via vk undo."""
+    """Verify soft-cleaning orphan attachments and restoring via sbk undo."""
     orphan = mock_vault / "90-99_Allegati" / "Orphan_Image.png"
     assert orphan.is_file()
 
@@ -58,7 +58,7 @@ def test_cli_clean_attachments_and_undo(mock_vault: Path) -> None:
 
 
 def test_cli_frontmatter_and_undo(mock_vault: Path) -> None:
-    """Verify frontmatter change and reverting with vk undo."""
+    """Verify frontmatter change and reverting with sbk undo."""
     note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
     orig_text = note.read_text(encoding="utf-8")
 
@@ -85,13 +85,13 @@ def test_cli_frontmatter_and_undo(mock_vault: Path) -> None:
 
 
 def test_cli_undo_when_empty_history(mock_vault: Path) -> None:
-    """Verify vk undo fails gracefully when no transactions exist."""
+    """Verify sbk undo fails gracefully when no transactions exist."""
     code = main(["--root", str(mock_vault), "undo"])
     assert code == 1
 
 
 def test_cli_history_formats_and_limits(mock_vault: Path) -> None:
-    """Verify vk history renders cleanly with yaml, csv, and md limits."""
+    """Verify sbk history renders cleanly with yaml, csv, and md limits."""
     note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
     main(["--root", str(mock_vault), "frontmatter", "set-type", "--target", str(note), "--type", "Risorsa"])
 
@@ -101,7 +101,7 @@ def test_cli_history_formats_and_limits(mock_vault: Path) -> None:
 
 
 def test_cli_undo_conflict_returns_error(mock_vault: Path) -> None:
-    """Verify vk undo returns error code 1 when conflict is detected."""
+    """Verify sbk undo returns error code 1 when conflict is detected."""
     note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
     main(["--root", str(mock_vault), "frontmatter", "set-type", "--target", str(note), "--type", "Risorsa"])
 

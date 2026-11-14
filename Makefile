@@ -28,7 +28,7 @@ install-dev:
 	$(PIP) install -e ".[dev]"
 
 test:
-	$(PYTEST) --cov=vaultkeeper --cov-report=term-missing tests/
+	$(PYTEST) --cov=sbk --cov-report=term-missing tests/
 
 lint:
 	$(RUFF) check src/ tests/
@@ -39,7 +39,7 @@ format:
 	$(RUFF) format src/ tests/
 
 typecheck:
-	$(MYPY) src/vaultkeeper/
+	$(MYPY) src/sbk/
 
 tox:
 	$(TOX)

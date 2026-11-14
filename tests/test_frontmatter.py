@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from vaultkeeper.core.frontmatter import (
+from sbk.core.frontmatter import (
     extract_inline_tags,
     parse_note_content,
     parse_taxonomy_file,

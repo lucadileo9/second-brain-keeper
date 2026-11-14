@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from vaultkeeper.core.document import MarkdownDocument
-from vaultkeeper.core.journal import TransactionJournal
-from vaultkeeper.exceptions import DocumentError
+from sbk.core.document import MarkdownDocument
+from sbk.core.journal import TransactionJournal
+from sbk.exceptions import DocumentError
 
 
 def test_markdown_document_from_content() -> None:

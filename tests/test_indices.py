@@ -2,12 +2,12 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.indices import (
+from sbk.config import load_vault_config
+from sbk.core.indices import (
     get_index_filename_for_folder,
     write_folder_index,
 )
-from vaultkeeper.core.traversal import build_vault_catalog
+from sbk.core.traversal import build_vault_catalog
 
 
 def test_get_index_filename_patterns(mock_vault: Path) -> None:

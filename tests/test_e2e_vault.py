@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from vaultkeeper import Vault
+from sbk import Vault
 
 
 def test_full_vault_lifecycle_and_remediation(empty_temp_dir: Path) -> None:

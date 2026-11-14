@@ -1,4 +1,4 @@
-"""Integration tests for CLI command 'vk create'."""
+"""Integration tests for CLI command 'sbk create'."""
 
 import json
 import tempfile
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from vaultkeeper.cli.main import main
+from sbk.cli.main import main
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ def test_cli_create_basic(cli_vault: Path, capsys: pytest.CaptureFixture) -> Non
 
 
 def test_cli_create_with_template_and_undo(cli_vault: Path, capsys: pytest.CaptureFixture) -> None:
-    """Test creating a note with template and reverting via vk undo."""
+    """Test creating a note with template and reverting via sbk undo."""
     ret = main(
         [
             "--root",
@@ -123,7 +123,7 @@ def test_cli_create_with_template_and_undo(cli_vault: Path, capsys: pytest.Captu
 
 
 def test_cli_create_dry_run(cli_vault: Path, capsys: pytest.CaptureFixture) -> None:
-    """Test vk create with --dry-run does not write file."""
+    """Test sbk create with --dry-run does not write file."""
     ret = main(
         [
             "--root",

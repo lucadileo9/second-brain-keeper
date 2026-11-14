@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from vaultkeeper.core.journal import TransactionJournal
-from vaultkeeper.exceptions import JournalError, UndoConflictError, UndoError
+from sbk.core.journal import TransactionJournal
+from sbk.exceptions import JournalError, UndoConflictError, UndoError
 
 
 def test_transaction_write_and_commit(mock_vault: Path) -> None:
@@ -142,7 +142,7 @@ def test_prune_history(mock_vault: Path) -> None:
         with journal.begin_transaction(f"edit_{i}") as tx:
             tx.write_content(target, f"Version {i}")
 
-    files = list((mock_vault / ".vaultkeeper" / "history").glob("*.json.gz"))
+    files = list((mock_vault / ".sbk" / "history").glob("*.json.gz"))
     assert len(files) == 3
 
 

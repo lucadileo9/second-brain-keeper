@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.indices import IndexManager
-from vaultkeeper.core.templates import TemplateEngine, resolve_target_folder
-from vaultkeeper.exceptions import CreationError, TaxonomyError, TemplateError
-from vaultkeeper.vault import Vault
+from sbk.config import load_vault_config
+from sbk.core.indices import IndexManager
+from sbk.core.templates import TemplateEngine, resolve_target_folder
+from sbk.exceptions import CreationError, TaxonomyError, TemplateError
+from sbk.vault import Vault
 
 
 @pytest.fixture

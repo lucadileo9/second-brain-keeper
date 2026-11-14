@@ -2,14 +2,14 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.attachments import (
+from sbk.config import load_vault_config
+from sbk.core.attachments import (
     find_heavy_files,
     find_orphan_attachments,
     hard_delete_attachment,
     soft_delete_attachment,
 )
-from vaultkeeper.core.traversal import build_vault_catalog
+from sbk.core.traversal import build_vault_catalog
 
 
 def test_find_orphan_attachments(mock_vault: Path) -> None:
@@ -73,7 +73,7 @@ def test_attachment_collision_and_errors(mock_vault: Path) -> None:
     # Non-existent file error
     import pytest
 
-    from vaultkeeper.exceptions import AttachmentError
+    from sbk.exceptions import AttachmentError
 
     fake_file = mock_vault / "nonexistent.png"
     with pytest.raises(AttachmentError):

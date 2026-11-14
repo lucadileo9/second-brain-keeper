@@ -1,25 +1,25 @@
-"""Unit and integration tests for the vk CLI entrypoint."""
+"""Unit and integration tests for the sbk CLI entrypoint."""
 
 from pathlib import Path
 
-from vaultkeeper import __version__
-from vaultkeeper.cli.logging import close_cli_logger, setup_cli_logger
-from vaultkeeper.cli.main import main
+from sbk import __version__
+from sbk.cli.logging import close_cli_logger, setup_cli_logger
+from sbk.cli.main import main
 
 
 def test_cli_version(capsys) -> None:
-    """Verify vk --version exits cleanly."""
+    """Verify sbk --version exits cleanly."""
     try:
         main(["--version"])
     except SystemExit as e:
         assert e.code == 0
     captured = capsys.readouterr()
-    expected = f"vk {__version__}"
+    expected = f"sbk {__version__}"
     assert expected in captured.out or expected in captured.err
 
 
 def test_cli_help(capsys) -> None:
-    """Verify vk --help displays all subcommands."""
+    """Verify sbk --help displays all subcommands."""
     code = main([])
     assert code == 0
     captured = capsys.readouterr()
@@ -34,7 +34,7 @@ def test_cli_help(capsys) -> None:
 
 
 def test_cli_init(empty_temp_dir: Path) -> None:
-    """Verify vk init generates vault.toml."""
+    """Verify sbk init generates vault.toml."""
     code = main(["init", "--target", str(empty_temp_dir)])
     assert code == 0
     assert (empty_temp_dir / "vault.toml").is_file()
@@ -45,7 +45,7 @@ def test_cli_init(empty_temp_dir: Path) -> None:
 
 
 def test_cli_audit(mock_vault: Path) -> None:
-    """Verify vk audit runs and returns issues exit code."""
+    """Verify sbk audit runs and returns issues exit code."""
     json_out = mock_vault / "audit_out.json"
     report_md = mock_vault / "audit_report.md"
     log_file = mock_vault / "cli_audit.log"
@@ -71,13 +71,13 @@ def test_cli_audit(mock_vault: Path) -> None:
 
 
 def test_cli_check_links(mock_vault: Path) -> None:
-    """Verify vk check-links identifies broken links."""
+    """Verify sbk check-links identifies broken links."""
     code = main(["--root", str(mock_vault), "check-links"])
     assert code == 2
 
 
 def test_cli_clean_attachments(mock_vault: Path) -> None:
-    """Verify vk clean-attachments dry-run and live execution."""
+    """Verify sbk clean-attachments dry-run and live execution."""
     orphan = mock_vault / "90-99_Allegati" / "Orphan_Image.png"
     assert orphan.is_file()
 
@@ -93,7 +93,7 @@ def test_cli_clean_attachments(mock_vault: Path) -> None:
 
 
 def test_cli_normalize_names(mock_vault: Path) -> None:
-    """Verify vk normalize-names dry-run and live execution."""
+    """Verify sbk normalize-names dry-run and live execution."""
     bad_file = mock_vault / "20-29_Aree" / "bad name test.md"
     bad_file.write_text("# Bad Name Note\n", encoding="utf-8")
 
@@ -110,7 +110,7 @@ def test_cli_normalize_names(mock_vault: Path) -> None:
 
 
 def test_cli_generate_indices(mock_vault: Path) -> None:
-    """Verify vk generate-indices creates MOC index files."""
+    """Verify sbk generate-indices creates MOC index files."""
     code = main(["--root", str(mock_vault), "generate-indices", "--all"])
     assert code == 0
     idx = mock_vault / "10-19_Progetti" / "00_Indice_Progetti.md"
@@ -118,7 +118,7 @@ def test_cli_generate_indices(mock_vault: Path) -> None:
 
 
 def test_cli_frontmatter_commands(mock_vault: Path) -> None:
-    """Verify vk frontmatter subcommands."""
+    """Verify sbk frontmatter subcommands."""
     note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
 
     # set-type
@@ -180,7 +180,7 @@ def test_cli_frontmatter_commands(mock_vault: Path) -> None:
 
 
 def test_cli_disambiguate(mock_vault: Path) -> None:
-    """Verify vk disambiguate detects no collisions, and reports when collisions exist."""
+    """Verify sbk disambiguate detects no collisions, and reports when collisions exist."""
     code_clean = main(["--root", str(mock_vault), "disambiguate"])
     assert code_clean == 0
 

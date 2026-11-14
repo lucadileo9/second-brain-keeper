@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.links import (
+from sbk.config import load_vault_config
+from sbk.core.links import (
     find_all_links_in_content,
     find_stem_collisions,
     parse_wikilink_target,
     resolve_link_target,
     scan_broken_links,
 )
-from vaultkeeper.core.traversal import build_vault_catalog
+from sbk.core.traversal import build_vault_catalog
 
 
 def test_parse_wikilink_target() -> None:

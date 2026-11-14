@@ -1,11 +1,11 @@
 # Batch Operation JSON Templates
 
-This directory contains reference JSON template files for batch operations supported by `obsidian-vaultkeeper` (`vk`).
+This directory contains reference JSON template files for batch operations supported by `second-brain-keeper` (`vk`).
 
 All batch operations enforce:
 1. **Option 1 (Dictionary Mapping Format)**: Key-value dictionary syntax `{key: value}`.
 2. **Strict All-or-Nothing Preflight**: If even a single item fails preflight validation (missing note, path collision, invalid type, or non-taxonomic tag under strict mode), the entire batch is rejected with zero disk modifications.
-3. **Single Transaction**: Every batch run creates a single journal record that can be completely reverted with `vk undo`.
+3. **Single Transaction**: Every batch run creates a single journal record that can be completely reverted with `sbk undo`.
 4. **Dry-Run Simulation**: `--dry-run` flag can be appended to any batch command to preview actions without altering state.
 
 ---
@@ -23,8 +23,8 @@ Moves multiple files or directories into target Johnny.Decimal folders and synch
 
 ### CLI Command
 ```bash
-vk move --batch examples/batch/batch_move_template.json
-vk move --batch examples/batch/batch_move_template.json --dry-run
+sbk move --batch examples/batch/batch_move_template.json
+sbk move --batch examples/batch/batch_move_template.json --dry-run
 ```
 
 ---
@@ -42,9 +42,9 @@ Renames multiple notes or assets, updates folder indices, and refactors all inco
 
 ### CLI Command
 ```bash
-vk rename --batch examples/batch/batch_rename_template.json
-vk rename --batch examples/batch/batch_rename_template.json --skip-links
-vk rename --batch examples/batch/batch_rename_template.json --dry-run
+sbk rename --batch examples/batch/batch_rename_template.json
+sbk rename --batch examples/batch/batch_rename_template.json --skip-links
+sbk rename --batch examples/batch/batch_rename_template.json --dry-run
 ```
 
 ---
@@ -62,8 +62,8 @@ Sets or updates the `tipo` (or configured type field) in the YAML frontmatter of
 
 ### CLI Command
 ```bash
-vk frontmatter set-type --batch examples/batch/batch_set_type_template.json
-vk frontmatter set-type --batch examples/batch/batch_set_type_template.json --dry-run
+sbk frontmatter set-type --batch examples/batch/batch_set_type_template.json
+sbk frontmatter set-type --batch examples/batch/batch_set_type_template.json --dry-run
 ```
 
 ---
@@ -85,11 +85,11 @@ Appends or overwrites tags in the YAML frontmatter of multiple notes. Validates 
 ### CLI Command
 ```bash
 # Append tags (default)
-vk frontmatter add-tags --batch examples/batch/batch_add_tags_template.json
+sbk frontmatter add-tags --batch examples/batch/batch_add_tags_template.json
 
 # Overwrite existing tags
-vk frontmatter add-tags --batch examples/batch/batch_add_tags_template.json --overwrite
+sbk frontmatter add-tags --batch examples/batch/batch_add_tags_template.json --overwrite
 
 # Dry run
-vk frontmatter add-tags --batch examples/batch/batch_add_tags_template.json --dry-run
+sbk frontmatter add-tags --batch examples/batch/batch_add_tags_template.json --dry-run
 ```

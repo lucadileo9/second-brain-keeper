@@ -30,7 +30,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       - name: Run tests
-        run: python -m pytest --cov=vaultkeeper --cov-report=xml
+        run: python -m pytest --cov=sbk --cov-report=xml
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         continue-on-error: true
@@ -50,7 +50,7 @@ jobs:
       - run: pip install -e ".[dev]" mypy types-pyyaml
       - run: ruff check src/ tests/
       - run: ruff format --check src/ tests/
-      - run: mypy src/vaultkeeper/
+      - run: mypy src/sbk/
 
   security:
     name: Security Scan

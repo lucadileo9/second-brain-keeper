@@ -5,9 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from vaultkeeper.cli.main import main
-from vaultkeeper.exceptions import FrontmatterError, LifecycleError, NamingError, TaxonomyError, VaultKeeperError
-from vaultkeeper.vault import Vault
+from sbk.cli.main import main
+from sbk.exceptions import (
+    FrontmatterError,
+    LifecycleError,
+    NamingError,
+    SBKError,
+    TaxonomyError,
+)
+from sbk.vault import Vault
 
 
 def test_batch_move_nominal_and_undo(mock_vault_with_config: Path) -> None:
@@ -280,19 +286,19 @@ def test_batch_json_source_loading_and_errors(mock_vault_with_config: Path) -> N
     v = Vault(mock_vault_with_config)
 
     # 1. Non-existent JSON file
-    with pytest.raises(VaultKeeperError, match="Batch mapping file not found"):
+    with pytest.raises(SBKError, match="Batch mapping file not found"):
         v.batch_move("inesistente.json")
 
     # 2. Malformed JSON file
     bad_json = mock_vault_with_config / "bad.json"
     bad_json.write_text("{not valid json", encoding="utf-8")
-    with pytest.raises(VaultKeeperError, match="Invalid JSON"):
+    with pytest.raises(SBKError, match="Invalid JSON"):
         v.batch_move(bad_json)
 
     # 3. Valid JSON but not a dictionary (e.g. array)
     list_json = mock_vault_with_config / "list.json"
     list_json.write_text('["item1", "item2"]', encoding="utf-8")
-    with pytest.raises(VaultKeeperError, match="must contain a JSON dictionary"):
+    with pytest.raises(SBKError, match="must contain a JSON dictionary"):
         v.batch_move(list_json)
 
 
@@ -301,21 +307,21 @@ def test_batch_cli_commands(mock_vault_with_config: Path) -> None:
     note1 = mock_vault_with_config / "10-19_Progetti" / "Progetto_Alpha.md"
     note2 = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
 
-    # 1. CLI vk frontmatter set-type --batch
+    # 1. CLI sbk frontmatter set-type --batch
     batch_type = mock_vault_with_config / "batch_type.json"
     batch_type.write_text(json.dumps({str(note1): "Risorsa"}), encoding="utf-8")
     code = main(["--root", str(mock_vault_with_config), "frontmatter", "set-type", "--batch", str(batch_type)])
     assert code == 0
     assert "tipo: Risorsa" in note1.read_text(encoding="utf-8")
 
-    # 2. CLI vk frontmatter add-tags --batch
+    # 2. CLI sbk frontmatter add-tags --batch
     batch_tags = mock_vault_with_config / "batch_tags.json"
     batch_tags.write_text(json.dumps({str(note1): ["area/lavoro"]}), encoding="utf-8")
     code = main(["--root", str(mock_vault_with_config), "frontmatter", "add-tags", "--batch", str(batch_tags)])
     assert code == 0
     assert "area/lavoro" in note1.read_text(encoding="utf-8")
 
-    # 3. CLI vk rename --batch
+    # 3. CLI sbk rename --batch
     batch_rename = mock_vault_with_config / "batch_rename.json"
     batch_rename.write_text(json.dumps({str(note2): "Nota_Beta_Cli"}), encoding="utf-8")
     code = main(["--root", str(mock_vault_with_config), "rename", "--batch", str(batch_rename)])
@@ -323,7 +329,7 @@ def test_batch_cli_commands(mock_vault_with_config: Path) -> None:
     new_note2 = mock_vault_with_config / "20-29_Aree" / "Nota_Beta_Cli.md"
     assert new_note2.exists()
 
-    # 4. CLI vk move --batch
+    # 4. CLI sbk move --batch
     batch_move = mock_vault_with_config / "batch_move.json"
     batch_move.write_text(json.dumps({str(new_note2): "10-19_Progetti"}), encoding="utf-8")
     code = main(["--root", str(mock_vault_with_config), "move", "--batch", str(batch_move)])

@@ -4,17 +4,17 @@ from pathlib import Path
 
 import pytest
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.document import MarkdownDocument
-from vaultkeeper.core.indices import IndexManager
-from vaultkeeper.core.lifecycle import (
+from sbk.config import load_vault_config
+from sbk.core.document import MarkdownDocument
+from sbk.core.indices import IndexManager
+from sbk.core.lifecycle import (
     extract_summary_for_tombstone,
     move_item,
     rename_item,
 )
-from vaultkeeper.core.links import WikilinkEngine
-from vaultkeeper.exceptions import ArchiveError, LifecycleError, NamingError, OffloadError
-from vaultkeeper.vault import Vault
+from sbk.core.links import WikilinkEngine
+from sbk.exceptions import ArchiveError, LifecycleError, NamingError, OffloadError
+from sbk.vault import Vault
 
 
 def test_index_manager_basic(mock_vault_with_config: Path) -> None:

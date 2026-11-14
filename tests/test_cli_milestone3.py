@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-from vaultkeeper.cli.main import main
+from sbk.cli.main import main
 
 
 def test_cli_tags_show_add_remove(mock_vault_with_config: Path, capsys) -> None:
-    """Verify vk tags show, add, and remove CLI flows."""
+    """Verify sbk tags show, add, and remove CLI flows."""
     root_str = str(mock_vault_with_config)
 
     # 1. tags show default (md)
@@ -49,7 +49,7 @@ def test_cli_tags_show_add_remove(mock_vault_with_config: Path, capsys) -> None:
 
 
 def test_cli_config_show_and_set(mock_vault_with_config: Path) -> None:
-    """Verify vk config show and set CLI commands."""
+    """Verify sbk config show and set CLI commands."""
     root_str = str(mock_vault_with_config)
 
     # config show
@@ -78,7 +78,7 @@ def test_cli_config_show_and_set(mock_vault_with_config: Path) -> None:
 
 
 def test_cli_search(mock_vault_with_config: Path, capsys) -> None:
-    """Verify vk search CLI execution with filters and formats."""
+    """Verify sbk search CLI execution with filters and formats."""
     root_str = str(mock_vault_with_config)
 
     # 1. Search text query
@@ -105,7 +105,7 @@ def test_cli_search(mock_vault_with_config: Path, capsys) -> None:
 
 
 def test_cli_graph_health(mock_vault_with_config: Path, capsys) -> None:
-    """Verify vk graph-health execution."""
+    """Verify sbk graph-health execution."""
     root_str = str(mock_vault_with_config)
 
     # Default md
@@ -121,7 +121,7 @@ def test_cli_graph_health(mock_vault_with_config: Path, capsys) -> None:
 
 
 def test_cli_map(mock_vault_with_config: Path, capsys) -> None:
-    """Verify vk map execution and master MOC output generation."""
+    """Verify sbk map execution and master MOC output generation."""
     root_str = str(mock_vault_with_config)
 
     # Default md output

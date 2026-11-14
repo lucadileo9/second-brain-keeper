@@ -1,9 +1,9 @@
 # Modelli di Dominio (Domain Models)
 
-Il package `vaultkeeper.models` definisce le strutture dati immutabili e fortemente tipizzate impiegate dall'intero ecosistema di `obsidian-vaultkeeper`. 
+Il package `sbk.models` definisce le strutture dati immutabili e fortemente tipizzate impiegate dall'intero ecosistema di `second-brain-keeper`. 
 La separazione dei modelli dal motore computazionale garantisce che la logica di dominio e il presentation layer scambino contratti deterministici, serializzabili e privi di effetti collaterali.
 
-Tutti i 23 modelli sono organizzati in 5 moduli specializzati e riesportati collettivamente attraverso `vaultkeeper.models.__init__`.
+Tutti i 23 modelli sono organizzati in 5 moduli specializzati e riesportati collettivamente attraverso `sbk.models.__init__`.
 
 ---
 
@@ -63,14 +63,14 @@ flowchart TD
 
 ---
 
-## 1. Configurazione (`vaultkeeper.models.config`)
+## 1. Configurazione (`sbk.models.config`)
 
 ### `VaultConfig`
 Rappresenta lo schema di configurazione del Vault caricato da `vault.toml` o dedotto dai parametri di default del sistema.
 
-- **Import:** `from vaultkeeper.models import VaultConfig` (oppure `from vaultkeeper.models.config import VaultConfig`)
-- **Produttore:** `vaultkeeper.config.load_vault_config()`
-- **Consumatore:** `Vault`, tutti i moduli di `vaultkeeper.core.*`
+- **Import:** `from sbk.models import VaultConfig` (oppure `from sbk.models.config import VaultConfig`)
+- **Produttore:** `sbk.config.load_vault_config()`
+- **Consumatore:** `Vault`, tutti i moduli di `sbk.core.*`
 
 #### Campi e Tipizzazione
 
@@ -106,14 +106,14 @@ Rappresenta lo schema di configurazione del Vault caricato da `vault.toml` o ded
 
 ---
 
-## 2. Entità di Dominio (`vaultkeeper.models.entities`)
+## 2. Entità di Dominio (`sbk.models.entities`)
 
 ### `Frontmatter`
 Rappresenta i metadati YAML posizionati all'inizio di una nota Markdown.
 
-- **Import:** `from vaultkeeper.models import Frontmatter`
-- **Produttore:** `vaultkeeper.core.frontmatter.parse_note_content()`, `MarkdownDocument`
-- **Consumatore:** `Note`, `AuditEngine`, `SearchEngine`, comandi `vk frontmatter`
+- **Import:** `from sbk.models import Frontmatter`
+- **Produttore:** `sbk.core.frontmatter.parse_note_content()`, `MarkdownDocument`
+- **Consumatore:** `Note`, `AuditEngine`, `SearchEngine`, comandi `sbk frontmatter`
 
 #### Campi
 - `raw_content: str`: Blocco YAML testuale grezzo, inclusi i delimitatori `---`.
@@ -130,8 +130,8 @@ Rappresenta i metadati YAML posizionati all'inizio di una nota Markdown.
 ### `Note`
 Rappresentazione astratta e disaccoppiata di un appunto Markdown presente nel Vault.
 
-- **Import:** `from vaultkeeper.models import Note`
-- **Produttore:** `vaultkeeper.core.frontmatter.read_note()`, `Vault.get_note()`
+- **Import:** `from sbk.models import Note`
+- **Produttore:** `sbk.core.frontmatter.read_note()`, `Vault.get_note()`
 - **Consumatore:** `IndexManager`, `SearchEngine`, comandi CLI di ispezione
 
 #### Campi
@@ -146,8 +146,8 @@ Rappresentazione astratta e disaccoppiata di un appunto Markdown presente nel Va
 ### `VaultCatalog`
 Indice $O(1)$ in memoria contenente la mappatura completa di percorsi, stem e file del Vault. Consente di evitare scansioni ricorsive del disco durante operazioni ripetitive (es. risoluzione wikilink o audit).
 
-- **Import:** `from vaultkeeper.models import VaultCatalog`
-- **Produttore:** `vaultkeeper.core.traversal.build_vault_catalog()`
+- **Import:** `from sbk.models import VaultCatalog`
+- **Produttore:** `sbk.core.traversal.build_vault_catalog()`
 - **Consumatore:** `Vault.catalog`, `WikilinkEngine`, `SearchEngine`, `GraphTelemetry`
 
 #### Campi
@@ -160,12 +160,12 @@ Indice $O(1)$ in memoria contenente la mappatura completa di percorsi, stem e fi
 
 ---
 
-## 3. Motore Transazionale e Reversibilità (`vaultkeeper.models.journal`)
+## 3. Motore Transazionale e Reversibilità (`sbk.models.journal`)
 
 ### `ActionRecord`
 Rappresenta una micro-mutazione atomica e reversibile operata sul filesystem o sul contenuto di un file.
 
-- **Import:** `from vaultkeeper.models import ActionRecord`
+- **Import:** `from sbk.models import ActionRecord`
 - **Produttore:** Metodi di `Transaction` (`write_content`, `move_file`, `create_file`, `delete_file`)
 - **Consumatore:** `TransactionRecord`, `TransactionJournal.undo()`
 
@@ -188,9 +188,9 @@ Rappresenta una micro-mutazione atomica e reversibile operata sul filesystem o s
 ### `TransactionRecord`
 Incapsula una transazione completata, composta da una o più azioni correlate che devono essere annullate o ripristinate congiuntamente.
 
-- **Import:** `from vaultkeeper.models import TransactionRecord`
+- **Import:** `from sbk.models import TransactionRecord`
 - **Produttore:** `TransactionJournal.commit()`
-- **Consumatore:** `TransactionJournal.list_transactions()`, `TransactionJournal.undo()`, `vk history`
+- **Consumatore:** `TransactionJournal.list_transactions()`, `TransactionJournal.undo()`, `sbk history`
 
 #### Campi
 - `tx_id: str`: Identificativo univoco temporale con entropia (es. `"tx_20261108_143015_123456_a1b2c3"`).
@@ -204,11 +204,11 @@ Incapsula una transazione completata, composta da una o più azioni correlate ch
 ---
 
 ### `UndoResult`
-Esito dell'operazione di rollback eseguita da `TransactionJournal.undo()` o dal comando `vk undo`.
+Esito dell'operazione di rollback eseguita da `TransactionJournal.undo()` o dal comando `sbk undo`.
 
-- **Import:** `from vaultkeeper.models import UndoResult`
+- **Import:** `from sbk.models import UndoResult`
 - **Produttore:** `TransactionJournal.undo()`
-- **Consumatore:** `Vault.undo()`, `vk undo`
+- **Consumatore:** `Vault.undo()`, `sbk undo`
 
 #### Campi
 - `tx_id: str`: Identificativo della transazione sottoposta a rollback.
@@ -219,12 +219,12 @@ Esito dell'operazione di rollback eseguita da `TransactionJournal.undo()` o dal 
 
 ---
 
-## 4. Risultati delle Operazioni di Scrittura (`vaultkeeper.models.results`)
+## 4. Risultati delle Operazioni di Scrittura (`sbk.models.results`)
 
 I modelli di risultato rappresentano l'output immutabile delle mutazioni eseguite sul Vault, esponendo sia il nuovo stato sia l'identificativo della transazione generata per il rollback.
 
 ### `RenameResult`
-Esito dell'operazione `Vault.rename()` / `vk rename`.
+Esito dell'operazione `Vault.rename()` / `sbk rename`.
 
 - `old_path: Path`: Percorso originario della nota.
 - `new_path: Path`: Nuovo percorso con stem normalizzato.
@@ -233,7 +233,7 @@ Esito dell'operazione `Vault.rename()` / `vk rename`.
 - `tx_id: Optional[str]`: Identificativo della transazione registrata nel Journal (se non `--dry-run`).
 
 ### `MoveResult`
-Esito dell'operazione `Vault.move()` / `vk move`.
+Esito dell'operazione `Vault.move()` / `sbk move`.
 
 - `source_path: Path`: Percorso originale del file o cartella.
 - `dest_path: Path`: Percorso di destinazione finale.
@@ -242,7 +242,7 @@ Esito dell'operazione `Vault.move()` / `vk move`.
 - `tx_id: Optional[str]`: Identificativo di transazione per il rollback.
 
 ### `ArchiveResult`
-Esito dell'operazione `Vault.archive()` / `vk archive`.
+Esito dell'operazione `Vault.archive()` / `sbk archive`.
 
 - `source_path: Path`: Posizione originale nel Vault.
 - `archive_path: Path`: Posizione finale nel cold storage (`/srv/storage/Archive`).
@@ -251,7 +251,7 @@ Esito dell'operazione `Vault.archive()` / `vk archive`.
 - `tx_id: Optional[str]`: Identificativo di transazione.
 
 ### `OffloadResult`
-Esito dell'operazione `Vault.offload()` / `vk offload`.
+Esito dell'operazione `Vault.offload()` / `sbk offload`.
 
 - `offloaded_files: List[Tuple[Path, Path, int]]`: Elenco delle tuple `(sorgente, destinazione, byte_risparmiati)`.
 - `total_bytes_saved: int`: Volume complessivo alleggerito dal Vault.
@@ -268,7 +268,7 @@ Esito delle operazioni di mutazione tassonomica `Vault.tags_add()` e `Vault.tags
 - `tx_id: Optional[str]`: Identificativo di transazione.
 
 ### `CreateResult`
-Esito dell'operazione di creazione standardizzata `Vault.create()` / `vk create`.
+Esito dell'operazione di creazione standardizzata `Vault.create()` / `sbk create`.
 
 - `file_path: Path`: Percorso assoluto della nuova nota generata.
 - `rel_path: Path`: Percorso relativo rispetto al Vault.
@@ -279,12 +279,12 @@ Esito dell'operazione di creazione standardizzata `Vault.create()` / `vk create`
 - `template_used: Optional[str]`: Nome del template risolto e applicato.
 - `index_updated: bool`: Esito dell'aggiornamento automatico dell'indice di cartella.
 - `index_path: Optional[Path]`: Percorso del file MOC aggiornato.
-- `tx_id: Optional[str]`: Transazione di creazione per rollback con `vk undo`.
+- `tx_id: Optional[str]`: Transazione di creazione per rollback con `sbk undo`.
 - `dry_run: bool`: `True` se l'operazione è stata una simulazione.
 
 ---
 
-## 5. Telemetria e Diagnostica (`vaultkeeper.models.telemetry`)
+## 5. Telemetria e Diagnostica (`sbk.models.telemetry`)
 
 ### `BrokenLink`
 Rappresenta un collegamento non risolto scoperto all'interno di una nota.

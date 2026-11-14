@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from vaultkeeper.config import load_vault_config
-from vaultkeeper.core.map import VaultMapEngine
-from vaultkeeper.vault import Vault
+from sbk.config import load_vault_config
+from sbk.core.map import VaultMapEngine
+from sbk.vault import Vault
 
 
 def test_vault_map_report_generation(mock_vault_with_config: Path) -> None:

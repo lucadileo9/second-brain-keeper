@@ -1,6 +1,6 @@
-# Facade Unificata (`vaultkeeper.vault.Vault`)
+# Facade Unificata (`sbk.vault.Vault`)
 
-La classe `Vault` (definita in [`src/vaultkeeper/vault.py`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/src/vaultkeeper/vault.py)) costituisce il **punto di ingresso unico ad alto livello** per l'interazione con un Vault Obsidian o un archivio documentale.
+La classe `Vault` (definita in [`src/sbk/vault.py`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/vault.py)) costituisce il **punto di ingresso unico ad alto livello** per l'interazione con un Vault Obsidian o un archivio documentale.
 
 Implementa il pattern architetturale **Facade**, nascondendo la complessità dei 14 moduli del Core Engine dietro un'interfaccia coerente, fortemente tipizzata e priva di effetti collaterali indesiderati.
 
@@ -10,13 +10,13 @@ Implementa il pattern architetturale **Facade**, nascondendo la complessità dei
 
 1. **Headless & Pure Computational API**:
    - Nessun metodo della Facade invoca `sys.exit()`, `print()`, `input()` o formattatori di presentazione.
-   - In caso di anomalia o violazione delle regole di governance, la Facade solleva eccezioni tipizzate derivate da `VaultKeeperError` (`CreationError`, `FrontmatterError`, `TaxonomyError`, `VaultNotFoundError`, `JournalConflictError`).
+   - In caso di anomalia o violazione delle regole di governance, la Facade solleva eccezioni tipizzate derivate da `SBKError` (`CreationError`, `FrontmatterError`, `TaxonomyError`, `VaultNotFoundError`, `JournalConflictError`).
    - L'output di ogni operazione è un Domain Model immutabile o una struttura dati standard Python.
 2. **Atomic Journaling Trasparente**:
    - Qualsiasi metodo che provochi mutazioni sul filesystem (creazione, rinomina, spostamento, archiviazione, offload, alterazione frontmatter, modifica tag) apre automaticamente una transazione gestita nel `TransactionJournal`.
    - Se un'operazione parziale fallisce, l'eccezione viene propagata e le azioni già intraprese vengono sottoposte a rollback.
 3. **In-Memory Catalog Caching e Refresh**:
-   - L'indice di secondo livello [`VaultCatalog`](file:///home/lucadileo9/scripts/obsidian-vaultkeeper/docs/architecture/models.md#vaultcatalog) è calcolato in modalità *lazy* alla prima consultazione e mantenuto in memoria per azzerare accessi ridondanti a disco ($O(1)$).
+   - L'indice di secondo livello [`VaultCatalog`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#vaultcatalog) è calcolato in modalità *lazy* alla prima consultazione e mantenuto in memoria per azzerare accessi ridondanti a disco ($O(1)$).
    - Ogni operazione mutativa che altera percorsi o file invoca automaticamente `self.refresh()`, invalidando la cache per garantire consistenza assoluta.
 
 ---
@@ -27,7 +27,7 @@ La Facade funge da intermediario esclusivo tra il Presentation Layer e il Core E
 
 ```mermaid
 flowchart TD
-    CLI["CLI Layer (vk commands)"] --> FACADE["Facade: Vault (vault.py)"]
+    CLI["CLI Layer (sbk commands)"] --> FACADE["Facade: Vault (vault.py)"]
     EXT["Script Python & Agenti Varys"] --> FACADE
 
     FACADE --> CONFIG["Configuration (config.py)"]

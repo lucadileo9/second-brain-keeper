@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from vaultkeeper.config import (
+from sbk.config import (
     load_vault_config,
 )
-from vaultkeeper.exceptions import ConfigurationError, VaultNotFoundError
-from vaultkeeper.models import (
+from sbk.exceptions import ConfigurationError, VaultNotFoundError
+from sbk.models import (
     AuditReport,
     BrokenLink,
     Frontmatter,
