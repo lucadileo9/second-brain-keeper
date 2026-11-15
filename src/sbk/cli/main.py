@@ -19,6 +19,7 @@ from .commands.map import handle_map
 from .commands.move import handle_move
 from .commands.naming import handle_naming
 from .commands.offload import handle_offload
+from .commands.redo import handle_redo
 from .commands.rename import handle_rename
 from .commands.search import handle_search
 from .commands.tags import handle_tags
@@ -199,6 +200,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Specific transaction ID to revert (default: latest active transaction).",
     )
     undo_parser.add_argument("--dry-run", action="store_true", help="Preview undo actions without modifying files.")
+
+    # 11. sbk redo
+    redo_parser = subparsers.add_parser("redo", help="Reapply the most recently undone transaction.")
+    redo_parser.add_argument(
+        "--tx",
+        type=str,
+        default=None,
+        help="Specific transaction ID to reapply (default: latest reverted transaction).",
+    )
+    redo_parser.add_argument("--dry-run", action="store_true", help="Preview redo actions without modifying files.")
 
     # 11. sbk rename
     rename_parser = subparsers.add_parser("rename", help="Rename a note or asset with global wikilink refactoring.")
@@ -449,6 +460,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "frontmatter": handle_frontmatter,
             "history": handle_history,
             "undo": handle_undo,
+            "redo": handle_redo,
             "rename": handle_rename,
             "move": handle_move,
             "archive": handle_archive,

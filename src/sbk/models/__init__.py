@@ -14,7 +14,7 @@ backward-compatibility:
 
 from .config import VaultConfig
 from .entities import Frontmatter, Note, VaultCatalog
-from .journal import ActionRecord, TransactionRecord, UndoResult
+from .journal import ActionRecord, RedoResult, TransactionRecord, UndoResult
 from .results import (
     ArchiveResult,
     CreateResult,
@@ -47,6 +47,7 @@ __all__ = [
     "ActionRecord",
     "TransactionRecord",
     "UndoResult",
+    "RedoResult",
     # Results
     "ArchiveResult",
     "CreateResult",

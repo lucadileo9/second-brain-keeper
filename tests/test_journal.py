@@ -259,3 +259,66 @@ def test_rollback_in_memory_on_move_and_delete(mock_vault: Path) -> None:
     assert not dest.exists()
     assert alpha.is_file()
     assert alpha.read_text(encoding="utf-8") == orig_alpha
+
+
+def test_redo_restores_undone_transaction(mock_vault: Path) -> None:
+    """Verify redo re-applies a reverted transaction cleanly."""
+    from sbk.exceptions import RedoError
+
+    journal = TransactionJournal(mock_vault)
+    target = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
+    orig_content = target.read_text(encoding="utf-8")
+    new_content = "# Mutated Content for Redo Test"
+
+    # Redo when no reverted transactions exist returns success=False
+    empty_redo = journal.redo()
+    assert not empty_redo.success
+    assert "No undone transactions found" in empty_redo.message
+
+    with journal.begin_transaction("edit", "Update note") as tx:
+        tx.write_content(target, new_content)
+
+    assert target.read_text(encoding="utf-8") == new_content
+
+    # Active transaction cannot be redone
+    tx_id = journal.list_transactions()[0].tx_id
+    with pytest.raises(RedoError, match="is already active"):
+        journal.redo(tx_id=tx_id)
+
+    # Undo
+    undo_res = journal.undo()
+    assert undo_res.success
+    assert target.read_text(encoding="utf-8") == orig_content
+
+    # Dry-run redo
+    dry_res = journal.redo(dry_run=True)
+    assert dry_res.success
+    assert dry_res.reapplied_actions == 1
+    assert target.read_text(encoding="utf-8") == orig_content
+
+    # Live redo
+    redo_res = journal.redo()
+    assert redo_res.success
+    assert redo_res.reapplied_actions == 1
+    assert target.read_text(encoding="utf-8") == new_content
+    assert not journal.get_transaction(tx_id).reverted
+
+
+def test_redo_conflict_detection(mock_vault: Path) -> None:
+    """Verify redo aborts if file content was modified while undone."""
+    from sbk.exceptions import RedoConflictError
+
+    journal = TransactionJournal(mock_vault)
+    target = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
+
+    with journal.begin_transaction("edit", "Update note") as tx:
+        tx.write_content(target, "# Modified Content")
+
+    journal.undo()
+
+    # Modify file externally while transaction is reverted
+    target.write_text("# External Third Party Change", encoding="utf-8")
+
+    with pytest.raises(RedoConflictError, match="modified after being reverted"):
+        journal.redo()
+

@@ -110,3 +110,50 @@ def test_cli_undo_conflict_returns_error(mock_vault: Path) -> None:
 
     code_undo = main(["--root", str(mock_vault), "undo"])
     assert code_undo == 1
+
+
+def test_cli_redo_command(mock_vault: Path) -> None:
+    """Verify sbk redo re-applies undone transactions via CLI."""
+    note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
+    orig_text = note.read_text(encoding="utf-8")
+
+    # Set type
+    main(["--root", str(mock_vault), "frontmatter", "set-type", "--target", str(note), "--type", "Risorsa"])
+    assert "tipo: Risorsa" in note.read_text(encoding="utf-8")
+
+    # Undo
+    code_undo = main(["--root", str(mock_vault), "undo"])
+    assert code_undo == 0
+    assert note.read_text(encoding="utf-8") == orig_text
+
+    # Redo dry-run
+    code_dry = main(["--root", str(mock_vault), "redo", "--dry-run"])
+    assert code_dry == 0
+    assert note.read_text(encoding="utf-8") == orig_text
+
+    # Redo live
+    code_redo = main(["--root", str(mock_vault), "redo"])
+    assert code_redo == 0
+    assert "tipo: Risorsa" in note.read_text(encoding="utf-8")
+
+
+def test_cli_generate_indices_and_undo(mock_vault_with_config: Path) -> None:
+    """Verify sbk generate-indices creates journal transaction that can be undone."""
+    area_folder = mock_vault_with_config / "20-29_Aree"
+    idx_file = area_folder / "00_Indice_Aree.md"
+    assert not idx_file.exists()
+
+    code_gen = main(["--root", str(mock_vault_with_config), "generate-indices", "--target", str(area_folder)])
+    assert code_gen == 0
+    assert idx_file.is_file()
+
+    # Undo should delete the generated index note
+    code_undo = main(["--root", str(mock_vault_with_config), "undo"])
+    assert code_undo == 0
+    assert not idx_file.exists()
+
+    # Redo should bring it back
+    code_redo = main(["--root", str(mock_vault_with_config), "redo"])
+    assert code_redo == 0
+    assert idx_file.is_file()
+

@@ -169,6 +169,7 @@ def write_folder_index(
     folder_path: Path,
     config: VaultConfig,
     catalog: Optional[VaultCatalog] = None,
+    transaction: Optional[Any] = None,
     dry_run: bool = False,
 ) -> Tuple[Path, bool]:
     """Generate and write the index note for folder_path.
@@ -176,19 +177,8 @@ def write_folder_index(
     Returns:
         (index_path, was_created_or_modified)
     """
-    index_fname = get_index_filename_for_folder(folder_path, config)
-    index_path = folder_path / index_fname
-    content = generate_folder_index_content(folder_path, config, catalog)
-
-    if index_path.is_file():
-        existing = index_path.read_text(encoding="utf-8")
-        if existing == content:
-            return index_path, False
-
-    if not dry_run:
-        index_path.write_text(content, encoding="utf-8")
-
-    return index_path, True
+    mgr = IndexManager(config)
+    return mgr.rebuild_index(folder_path, catalog=catalog, transaction=transaction, dry_run=dry_run)
 
 
 class IndexManager:

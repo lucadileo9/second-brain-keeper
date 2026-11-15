@@ -44,8 +44,12 @@ from .core.traversal import build_vault_catalog, walk_vault_directories
 from .exceptions import (
     CreationError,
     FrontmatterError,
+    RedoConflictError,
+    RedoError,
     SBKError,
     TaxonomyError,
+    UndoConflictError,
+    UndoError,
     VaultNotFoundError,
 )
 from .models import (
@@ -58,6 +62,7 @@ from .models import (
     Note,
     OffloadResult,
     OrphanAttachment,
+    RedoResult,
     RenameResult,
     SearchResult,
     TagMutationResult,
@@ -155,7 +160,7 @@ class Vault:
             return results
 
         if orphans:
-            desc = f"Clean {len(orphans)} orphan attachments ({'hard' if hard_delete else 'soft'} delete)"
+            desc = f"Clean {len(orphans)} orphan attachments - {'hard' if hard_delete else 'soft'} delete"
             with self.journal.begin_transaction("clean-attachments", desc) as tx:
                 for orphan in orphans:
                     orig = orphan.file_path
@@ -211,16 +216,29 @@ class Vault:
         if not base_dir.is_dir():
             raise VaultNotFoundError(f"Target is not a directory: {base_dir}")
 
-        # Index the target directory itself
-        idx_path, changed = write_folder_index(base_dir, self.config, self.catalog, dry_run=dry_run)
-        results.append((idx_path, changed))
-
+        mgr = IndexManager(self.config)
+        dirs_to_index = [base_dir]
         if recursive:
-            for d in walk_vault_directories(self.config, target_dir=base_dir):
-                idx_path, changed = write_folder_index(d, self.config, self.catalog, dry_run=dry_run)
-                results.append((idx_path, changed))
+            dirs_to_index.extend(walk_vault_directories(self.config, target_dir=base_dir))
 
-        if not dry_run:
+        target_name = base_dir.name if base_dir != self.root else "vault"
+        desc = (
+            f"Generate indices recursively for {target_name}"
+            if recursive
+            else f"Generate indices for {target_name}"
+        )
+
+        if dry_run:
+            for d in dirs_to_index:
+                idx_path, changed = mgr.rebuild_index(d, catalog=self.catalog, dry_run=True)
+                results.append((idx_path, changed))
+        else:
+            with self.journal.begin_transaction("generate-indices", desc) as tx:
+                for d in dirs_to_index:
+                    idx_path, changed = mgr.rebuild_index(
+                        d, catalog=self.catalog, transaction=tx, dry_run=False
+                    )
+                    results.append((idx_path, changed))
             self.refresh()
 
         return results
@@ -396,6 +414,13 @@ class Vault:
     def undo(self, tx_id: Optional[str] = None, dry_run: bool = False) -> UndoResult:
         """Revert a transaction and refresh in-memory catalog."""
         result = self.journal.undo(tx_id=tx_id, dry_run=dry_run)
+        if result.success and not dry_run:
+            self.refresh()
+        return result
+
+    def redo(self, tx_id: Optional[str] = None, dry_run: bool = False) -> RedoResult:
+        """Re-apply a previously reverted transaction and refresh in-memory catalog."""
+        result = self.journal.redo(tx_id=tx_id, dry_run=dry_run)
         if result.success and not dry_run:
             self.refresh()
         return result
@@ -879,7 +904,7 @@ class Vault:
                 dry_run=True,
             )
 
-        with self.journal.begin_transaction("create", f"Create note '{clean_title}' ({dest_file.name})") as tx:
+        with self.journal.begin_transaction("create", f"Create note {dest_file.name}") as tx:
             target_folder.mkdir(parents=True, exist_ok=True)
             tx.write_content(dest_file, rendered_content)
             idx_path, idx_updated = index_mgr.rebuild_index(target_folder, transaction=tx, dry_run=False)
