@@ -12,26 +12,22 @@ from .document import MarkdownDocument
 
 def resolve_target_folder(
     vault_root: Path,
-    tipo: str,
+    tipo: str = "Appunto",
     custom_folder: Optional[Union[str, Path]] = None,
+    inbox_folder: str = "00_Inbox",
 ) -> Path:
     """Resolve the destination directory for a new note.
 
     If custom_folder is provided:
         - Resolves relative to vault_root (or validates absolute path within vault_root).
     Otherwise:
-        - Applies Johnny.Decimal routing rules based on tipo:
-          * 'Progetto' -> folder matching '10-19_*' or containing 'progett'
-          * 'Contatto' -> folder matching '32_CRM' or '30-39_*'
-          * 'Risorsa'  -> folder matching '20-29_*' or containing 'risors'
-          * 'Appunto'  -> folder matching '20-29_*' or first area directory
-          * 'Sistema'  -> folder matching '01-09_*' or '00-09_*'
-          * Fallback   -> vault_root
+        - Resolves deterministically to the configured staging inbox folder (default: '00_Inbox').
 
     Args:
         vault_root: Root path of the vault.
-        tipo: Note classification type.
+        tipo: Note classification type (unused for routing, kept for backward compatibility).
         custom_folder: Optional explicit target folder.
+        inbox_folder: Staging inbox folder name or relative path (default: '00_Inbox').
 
     Returns:
         Resolved Path for the target folder.
@@ -48,70 +44,8 @@ def resolve_target_folder(
             raise CreationError(f"Target folder '{custom_folder}' is outside vault root: {vault_root}")
         return resolved
 
-    # Auto-routing based on Johnny.Decimal conventions
-    norm_tipo = tipo.strip().lower()
-
-    # Discover candidate top-level directories (excluding hidden / ignored)
-    subdirs: List[Path] = [
-        d
-        for d in vault_root.iterdir()
-        if d.is_dir()
-        and not d.name.startswith(".")
-        and d.name not in (".obsidian", ".trash", ".git", "node_modules", ".venv")
-    ]
-
-    # Meta folders (00-09, 01-09, system) are excluded for general note routing
-    content_subdirs: List[Path] = [
-        d
-        for d in subdirs
-        if not (d.name.startswith("00-09") or d.name.startswith("01-09") or "sistema" in d.name.lower())
-    ]
-
-    if norm_tipo == "progetto":
-        for d in sorted(content_subdirs, key=lambda x: x.name):
-            if d.name.startswith("10-19") or "progett" in d.name.lower():
-                return d
-
-    elif norm_tipo == "contatto":
-        # Check for 32_CRM recursively under 30-39 or any top-level CRM
-        for d in sorted(content_subdirs, key=lambda x: x.name):
-            if d.name.startswith("30-39") or "carrier" in d.name.lower():
-                crm_sub = d / "32_CRM"
-                if crm_sub.is_dir():
-                    return crm_sub
-                # Check any direct subfolder containing CRM
-                for sub in d.iterdir():
-                    if sub.is_dir() and "crm" in sub.name.lower():
-                        return sub
-                return d
-        for d in sorted(content_subdirs, key=lambda x: x.name):
-            if "crm" in d.name.lower() or "contatt" in d.name.lower():
-                return d
-
-    elif norm_tipo == "risorsa":
-        for d in sorted(content_subdirs, key=lambda x: x.name):
-            if "risors" in d.name.lower():
-                return d
-        for d in sorted(content_subdirs, key=lambda x: x.name):
-            if d.name.startswith("20-29"):
-                return d
-
-    elif norm_tipo == "appunto":
-        for d in sorted(content_subdirs, key=lambda x: x.name):
-            if d.name.startswith("20-29") or "are" in d.name.lower() or "istruzion" in d.name.lower():
-                return d
-
-    elif norm_tipo == "sistema":
-        for d in sorted(subdirs, key=lambda x: x.name):
-            if d.name.startswith("01-09") or d.name.startswith("00-09") or "sistema" in d.name.lower():
-                return d
-
-    # Fallback to first 20-29 area if available, else vault_root
-    for d in sorted(content_subdirs, key=lambda x: x.name):
-        if d.name.startswith("20-29"):
-            return d
-
-    return vault_root
+    clean_inbox = str(inbox_folder).strip() if inbox_folder else "00_Inbox"
+    return (vault_root / clean_inbox).resolve()
 
 
 class TemplateEngine:

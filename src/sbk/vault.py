@@ -801,7 +801,12 @@ class Vault:
                 existing_rel = first_path
             raise CreationError(f"Stem collision: a note with stem '{stem}' already exists at '{existing_rel}'.")
 
-        target_folder = resolve_target_folder(self.root, effective_tipo, folder)
+        target_folder = resolve_target_folder(
+            self.root,
+            effective_tipo,
+            folder,
+            inbox_folder=self.config.inbox_folder,
+        )
         dest_file = target_folder / f"{stem}.md"
         if dest_file.exists():
             raise CreationError(f"File already exists at destination: '{dest_file}'.")

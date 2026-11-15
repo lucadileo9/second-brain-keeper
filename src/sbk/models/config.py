@@ -94,6 +94,7 @@ class VaultConfig:
     index_summary_max_chars: int = 250
     include_non_md_in_indices: bool = True
     archive_path: Optional[str] = None
+    inbox_folder: str = "00_Inbox"
     templates_folder: Optional[str] = "00-09_Meta/02_Template"
     offload_folder: Optional[str] = None
     max_undo_history: int = 100

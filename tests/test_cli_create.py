@@ -68,7 +68,7 @@ strict_taxonomy = true
 
 
 def test_cli_create_basic(cli_vault: Path, capsys: pytest.CaptureFixture) -> None:
-    """Test creating a note via CLI with auto-routing."""
+    """Test creating a note via CLI with default inbox routing."""
     ret = main(
         [
             "--root",
@@ -87,7 +87,7 @@ def test_cli_create_basic(cli_vault: Path, capsys: pytest.CaptureFixture) -> Non
     assert "Nuova Nota: Nuovo Progetto Backend" in out
     assert "[[Nuovo_Progetto_Backend]]" in out
 
-    dest_file = cli_vault / "10-19_Progetti" / "Nuovo_Progetto_Backend.md"
+    dest_file = cli_vault / "00_Inbox" / "Nuovo_Progetto_Backend.md"
     assert dest_file.is_file()
     content = dest_file.read_text(encoding="utf-8")
     assert "tipo: Progetto" in content
@@ -104,6 +104,8 @@ def test_cli_create_with_template_and_undo(cli_vault: Path, capsys: pytest.Captu
             "Marco Rossi",
             "--type",
             "Contatto",
+            "--folder",
+            "30-39_Carriera/32_CRM",
             "--template",
             "Template_Contatto",
             "--tags",
@@ -139,7 +141,7 @@ def test_cli_create_dry_run(cli_vault: Path, capsys: pytest.CaptureFixture) -> N
     out = capsys.readouterr().out
     assert "[DRY-RUN]" in out
 
-    target_file = cli_vault / "20-29_Istruzione" / "Nota_Di_Test_Dry_Run.md"
+    target_file = cli_vault / "00_Inbox" / "Nota_Di_Test_Dry_Run.md"
     assert not target_file.exists()
 
 

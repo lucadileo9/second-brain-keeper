@@ -546,9 +546,10 @@ def archive_item(
 
     # Determine archive root directory
     if config.archive_path:
-        archive_root = Path(config.archive_path).resolve()
+        p = Path(config.archive_path)
+        archive_root = (config.root_path / p if not p.is_absolute() else p).resolve()
     else:
-        archive_root = config.root_path.parent / "Archive"
+        archive_root = (config.root_path.parent / "Archive").resolve()
 
     try:
         rel = resolved_item.relative_to(config.root_path.resolve())
@@ -646,11 +647,14 @@ def offload_media(
     """Offload heavy binary files (>50MB or specific target) to cold storage."""
     # Determine offload destination directory
     if config.offload_folder:
-        offload_dir = Path(config.offload_folder).resolve()
+        p = Path(config.offload_folder)
+        offload_dir = (config.root_path / p if not p.is_absolute() else p).resolve()
     elif config.archive_path:
-        offload_dir = Path(config.archive_path).resolve() / "90-99_Allegati_Pesanti"
+        p = Path(config.archive_path)
+        archive_root = (config.root_path / p if not p.is_absolute() else p).resolve()
+        offload_dir = archive_root / "90-99_Allegati_Pesanti"
     else:
-        offload_dir = config.root_path.parent / "Archive" / "90-99_Allegati_Pesanti"
+        offload_dir = (config.root_path.parent / "Archive" / "90-99_Allegati_Pesanti").resolve()
 
     files_to_offload: List[Path] = []
     if target:
