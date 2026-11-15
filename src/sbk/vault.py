@@ -677,21 +677,30 @@ class Vault:
         cm = ConfigurationManager()
         if cfg_file.is_file():
             cm.load(str(cfg_file))
+        else:
+            from .config import generate_default_config_content
+
+            default_content = generate_default_config_content(self.root)
+            cfg_file.write_text(default_content, encoding="utf-8")
+            cm.load(str(cfg_file))
 
         typed_val: Any = value
         if isinstance(value, str):
-            if value.lower() in ("true", "yes", "on"):
+            val_lower = value.strip().lower()
+            if val_lower in ("true", "yes", "on"):
                 typed_val = True
-            elif value.lower() in ("false", "no", "off"):
+            elif val_lower in ("false", "no", "off"):
                 typed_val = False
+            elif val_lower in ("none", "null"):
+                typed_val = None
             else:
                 try:
-                    typed_val = int(value)
+                    typed_val = int(value.strip())
                 except ValueError:
                     try:
-                        typed_val = float(value)
+                        typed_val = float(value.strip())
                     except ValueError:
-                        typed_val = value
+                        typed_val = value.strip()
 
         cm.set(key, typed_val)
 

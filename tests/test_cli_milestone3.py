@@ -84,6 +84,16 @@ def test_cli_config_show_and_set(mock_vault_with_config: Path) -> None:
     assert code_undo == 0
     assert 'style = "kebab-case"' not in cfg_file.read_text(encoding="utf-8")
 
+    # config set boolean
+    code_set_bool = main(["--root", root_str, "config", "set", "tags.strict_taxonomy", "false"])
+    assert code_set_bool == 0
+    assert "strict_taxonomy = false" in cfg_file.read_text(encoding="utf-8")
+
+    # config set integer
+    code_set_int = main(["--root", root_str, "config", "set", "attachments.heavy_file_threshold_mb", "100"])
+    assert code_set_int == 0
+    assert "heavy_file_threshold_mb = 100" in cfg_file.read_text(encoding="utf-8")
+
 
 def test_cli_search(mock_vault_with_config: Path, capsys) -> None:
     """Verify sbk search CLI execution with filters and formats."""
