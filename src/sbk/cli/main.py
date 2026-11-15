@@ -10,13 +10,11 @@ from .commands.attachments import handle_attachments
 from .commands.audit import handle_audit
 from .commands.config import handle_config
 from .commands.create import handle_create
-from .commands.disambiguate import handle_disambiguate
 from .commands.frontmatter import handle_frontmatter
 from .commands.graph import handle_graph_health
 from .commands.history import handle_history
 from .commands.indices import handle_indices
 from .commands.init import handle_init
-from .commands.links import handle_links
 from .commands.map import handle_map
 from .commands.move import handle_move
 from .commands.naming import handle_naming
@@ -109,13 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--report-md", type=str, default=None, help="Export diagnostic results to a Markdown report."
     )
 
-    # 3. sbk check-links
-    links_parser = subparsers.add_parser(
-        "check-links", help="Scan notes for broken wikilinks and unresolved media embeds."
-    )
-    links_parser.add_argument("--target", type=str, default=None, help="Restrict scan to a specific note or subfolder.")
-
-    # 4. sbk clean-attachments
+    # 3. sbk clean-attachments
     att_parser = subparsers.add_parser("clean-attachments", help="Find and clean orphan media attachments.")
     att_parser.add_argument("--target", type=str, default=None, help="Restrict search to a specific directory.")
     att_parser.add_argument("--dry-run", action="store_true", help="Simulate deletion without touching disk files.")
@@ -179,12 +171,7 @@ def build_parser() -> argparse.ArgumentParser:
     sanitize_tags_parser.add_argument("--target", type=str, default=None, help="Restrict scan to a specific folder.")
     sanitize_tags_parser.add_argument("--dry-run", action="store_true", help="Simulate sanitization without saving.")
 
-    # 8. sbk disambiguate
-    disambiguate_parser = subparsers.add_parser("disambiguate", help="Scan and report stem collisions across folders.")
-    disambiguate_parser.add_argument("--target", type=str, default=None, help="Target folder to scan.")
-    disambiguate_parser.add_argument("--dry-run", action="store_true", help="Simulate without action.")
-
-    # 9. sbk history
+    # sbk history
     history_parser = subparsers.add_parser("history", help="List historical vaultkeeper transactions.")
     history_parser.add_argument("--limit", type=int, default=20, help="Maximum number of transactions to list.")
     history_parser.add_argument(
@@ -456,12 +443,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         command_handlers = {
             "init": handle_init,
             "audit": handle_audit,
-            "check-links": handle_links,
             "clean-attachments": handle_attachments,
             "normalize-names": handle_naming,
             "generate-indices": handle_indices,
             "frontmatter": handle_frontmatter,
-            "disambiguate": handle_disambiguate,
             "history": handle_history,
             "undo": handle_undo,
             "rename": handle_rename,
