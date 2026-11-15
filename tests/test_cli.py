@@ -121,6 +121,12 @@ def test_cli_frontmatter_commands(mock_vault: Path) -> None:
     """Verify sbk frontmatter subcommands."""
     note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
 
+    # set-type invalid
+    code_invalid = main(
+        ["--root", str(mock_vault), "frontmatter", "set-type", "--target", str(note), "--type", "TipoInvalido"]
+    )
+    assert code_invalid == 1
+
     # set-type
     code1 = main(["--root", str(mock_vault), "frontmatter", "set-type", "--target", str(note), "--type", "Risorsa"])
     assert code1 == 0

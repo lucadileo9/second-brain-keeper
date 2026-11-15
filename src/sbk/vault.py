@@ -240,13 +240,25 @@ class Vault:
         if not note_path.is_file():
             raise FrontmatterError(f"Note not found: {note_path}")
 
+        clean_type = str(new_type).strip() if new_type is not None else ""
+        if not clean_type:
+            raise FrontmatterError("Note type cannot be empty.")
+
+        if self.config.allowed_types:
+            matched = [t for t in self.config.allowed_types if t.lower() == clean_type.lower()]
+            if not matched:
+                raise FrontmatterError(
+                    f"Invalid note type '{new_type}'. Allowed types: {sorted(self.config.allowed_types)}"
+                )
+            clean_type = matched[0]
+
         content = note_path.read_text(encoding="utf-8")
-        updated = update_frontmatter(content, {self.config.type_field: new_type})
+        updated = update_frontmatter(content, {self.config.type_field: clean_type})
         if updated == content:
             return False
 
         if not dry_run:
-            with self.journal.begin_transaction("frontmatter", f"Set tipo to '{new_type}' in {note_path.name}") as tx:
+            with self.journal.begin_transaction("frontmatter", f"Set tipo to '{clean_type}' in {note_path.name}") as tx:
                 tx.write_content(note_path, updated)
             self.refresh()
 

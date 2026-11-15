@@ -73,7 +73,11 @@ def handle_set_type(args: Namespace, logger: logging.Logger) -> int:
         return EXIT_ERROR
 
     target_path = Path(target).resolve()
-    changed = v.set_frontmatter_type(target_path, new_type, dry_run=dry_run)
+    try:
+        changed = v.set_frontmatter_type(target_path, new_type, dry_run=dry_run)
+    except (FrontmatterError, VaultKeeperError) as exc:
+        logger.error("Failed to set frontmatter type: %s", exc)
+        return EXIT_ERROR
 
     if changed:
         logger.info("%sUpdated %s: %s -> %s", prefix, target_path.name, v.config.type_field, new_type)
