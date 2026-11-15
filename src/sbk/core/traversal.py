@@ -36,7 +36,7 @@ def walk_vault_files(
         dirnames[:] = [d for d in dirnames if d not in config.ignored_folders and not d.startswith(".")]
 
         for fname in filenames:
-            if fname.startswith("."):
+            if fname.startswith(".") or fname == "vault.toml":
                 continue
 
             file_path = dirpath / fname
