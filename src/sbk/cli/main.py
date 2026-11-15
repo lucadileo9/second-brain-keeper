@@ -21,6 +21,7 @@ from .commands.naming import handle_naming
 from .commands.offload import handle_offload
 from .commands.redo import handle_redo
 from .commands.rename import handle_rename
+from .commands.sandbox import handle_sandbox
 from .commands.search import handle_search
 from .commands.tags import handle_tags
 from .commands.undo import handle_undo
@@ -419,6 +420,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output format (default: md).",
     )
 
+    # 18. sbk sandbox
+    sandbox_parser = subparsers.add_parser("sandbox", help="Manage isolated testing sandbox environments.")
+    sandbox_sub = sandbox_parser.add_subparsers(dest="sandbox_action", help="Sandbox actions")
+
+    sb_init = sandbox_sub.add_parser("init", help="Initialize an isolated sandbox vault.")
+    sb_init.add_argument("--target", type=str, default=None, help="Target directory (defaults to ~/.sbk/sandbox).")
+    sb_init.add_argument("--force", action="store_true", help="Overwrite existing sandbox directory.")
+
+    sb_reset = sandbox_sub.add_parser("reset", help="Reset sandbox vault to a pristine clean state.")
+    sb_reset.add_argument("--target", type=str, default=None, help="Target directory (defaults to ~/.sbk/sandbox).")
+
+    sb_path = sandbox_sub.add_parser("path", help="Print absolute path to the sandbox vault directory.")
+    sb_path.add_argument("--target", type=str, default=None, help="Target directory (defaults to ~/.sbk/sandbox).")
+
     return parser
 
 
@@ -471,6 +486,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "graph-health": handle_graph_health,
             "map": handle_map,
             "create": handle_create,
+            "sandbox": handle_sandbox,
         }
 
         handler = command_handlers.get(args.command)
