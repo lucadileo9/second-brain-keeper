@@ -69,6 +69,18 @@ def test_cli_rename_dry_run_and_errors(mock_vault_with_config: Path) -> None:
     )
     assert code_err != 0
 
+    # Path separator error
+    code_path_sep = main(
+        [
+            "--root",
+            str(mock_vault_with_config),
+            "rename",
+            str(target_note),
+            "20-29_Aree/Subpath_Errato.md",
+        ]
+    )
+    assert code_path_sep != 0
+
     # Non-existent file
     code_ghost = main(
         [

@@ -179,6 +179,10 @@ def test_rename_preflight_collisions_and_ambiguity(mock_vault_with_config: Path)
     dup_note.write_text("# Dup\n", encoding="utf-8")
     v.refresh()
 
+    # Path separator in new_name should raise NamingError
+    with pytest.raises(NamingError, match="without path separators"):
+        v.rename(note_beta, "20-29_Aree/Altra_Nota.md")
+
     # Should raise error without skip_links
     with pytest.raises(NamingError, match="Ambiguous source stem"):
         v.rename(note_beta, "Nota_Beta_Disambiguata")

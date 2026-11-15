@@ -188,7 +188,13 @@ def build_parser() -> argparse.ArgumentParser:
     # 11. sbk rename
     rename_parser = subparsers.add_parser("rename", help="Rename a note or asset with global wikilink refactoring.")
     rename_parser.add_argument("file", nargs="?", default=None, type=str, help="Path of the file to rename.")
-    rename_parser.add_argument("new_name", nargs="?", default=None, type=str, help="New file name or stem.")
+    rename_parser.add_argument(
+        "new_name",
+        nargs="?",
+        default=None,
+        type=str,
+        help="New file name (not a path, e.g. Note_Name.md). To move files use 'sbk move'.",
+    )
     rename_parser.add_argument(
         "--batch",
         type=str,

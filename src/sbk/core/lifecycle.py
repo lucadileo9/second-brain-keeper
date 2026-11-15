@@ -70,6 +70,12 @@ def rename_item(
     if not resolved_src.exists():
         raise NamingError(f"Source file does not exist: {resolved_src}")
 
+    if "/" in new_name or "\\" in new_name:
+        raise NamingError(
+            f"Invalid new name '{new_name}': must be a file name or stem without path separators. "
+            "To move an item to a different folder, use 'sbk move'."
+        )
+
     # Determine new stem and target filename
     if resolved_src.is_file():
         if Path(new_name).suffix == resolved_src.suffix:
@@ -217,6 +223,12 @@ def batch_rename_items(
     }
 
     for src_raw, new_name in mapping.items():
+        if "/" in new_name or "\\" in new_name:
+            raise NamingError(
+                f"Batch rename failed pre-flight: Invalid target name '{new_name}' for '{src_raw}'. "
+                "Target must be a file name or stem without path separators. To move items, use 'sbk move'."
+            )
+
         src_raw_p = Path(src_raw)
         src_p = (root_resolved / src_raw_p if not src_raw_p.is_absolute() else src_raw_p).resolve()
 
