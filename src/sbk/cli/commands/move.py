@@ -64,6 +64,6 @@ def handle_move(args: Namespace, logger: logging.Logger) -> int:
     logger.info("  - Source folder index updated: %s", "Yes" if res.old_index_updated else "No")
     logger.info("  - Destination folder index updated: %s", "Yes" if res.new_index_updated else "No")
     if res.tx_id:
-        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+        logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
 
     return EXIT_SUCCESS

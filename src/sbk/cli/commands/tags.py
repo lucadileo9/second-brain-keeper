@@ -51,7 +51,7 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
 
         logger.info("%sTag '#%s' successfully registered in %s", prefix, res.tag, res.taxonomy_file.name)
         if res.tx_id:
-            logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+            logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
         return EXIT_SUCCESS
 
     if action == "remove":
@@ -70,7 +70,7 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
         if res.notes_affected_count > 0:
             logger.warning("  - Tag was referenced in %d note(s)", res.notes_affected_count)
         if res.tx_id:
-            logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+            logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
         return EXIT_SUCCESS
 
     logger.error("Unknown tag action: %s", action)

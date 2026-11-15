@@ -48,6 +48,6 @@ def handle_offload(args: Namespace, logger: logging.Logger) -> int:
 
     logger.info("  - Updated notes with external links: %d", res.updated_notes_count)
     if res.tx_id:
-        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+        logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
 
     return EXIT_SUCCESS

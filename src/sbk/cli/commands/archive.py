@@ -40,6 +40,6 @@ def handle_archive(args: Namespace, logger: logging.Logger) -> int:
     if res.summary:
         logger.info("  - Preserved summary: %s", res.summary)
     if res.tx_id:
-        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+        logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
 
     return EXIT_SUCCESS

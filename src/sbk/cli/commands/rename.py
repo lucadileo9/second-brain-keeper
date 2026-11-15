@@ -88,6 +88,6 @@ def handle_rename(args: Namespace, logger: logging.Logger) -> int:
     logger.info("  - Updated incoming wikilinks: %d", res.updated_links_count)
     logger.info("  - Folder index synchronized: %s", "Yes" if res.index_updated else "No")
     if res.tx_id:
-        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+        logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
 
     return EXIT_SUCCESS
