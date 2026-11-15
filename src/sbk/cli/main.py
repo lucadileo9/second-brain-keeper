@@ -82,7 +82,11 @@ def build_parser() -> argparse.ArgumentParser:
     # 2. sbk audit
     audit_parser = subparsers.add_parser("audit", help="Run 5-phase vault diagnostics and compute Health Score.")
     audit_parser.add_argument(
-        "--step", type=int, choices=[1, 2, 3, 4, 5], default=None, help="Execute only a specific phase."
+        "--step",
+        type=int,
+        choices=[1, 2, 3, 4, 5],
+        default=None,
+        help="Execute only a specific phase: 1=Structure/Naming, 2=Frontmatter, 3=Taxonomy, 4=Wikilinks, 5=Attachments.",
     )
     audit_parser.add_argument("--json", type=str, default=None, help="Export diagnostic results to a JSON file.")
     audit_parser.add_argument(

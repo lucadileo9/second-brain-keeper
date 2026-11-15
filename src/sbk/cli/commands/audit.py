@@ -28,9 +28,13 @@ def handle_audit(args: Namespace, logger: logging.Logger) -> int:
         status_text = "OK" if phase.is_clean() else f"{len(phase.issues)} ISSUES"
         logger.info("[Phase %d] %s: %s (%d warnings)", phase.phase_id, phase.title, status_text, len(phase.warnings))
         for issue in phase.issues[:10]:
-            logger.warning("  - %s", issue)
+            logger.warning("  - Issue: %s", issue)
         if len(phase.issues) > 10:
             logger.warning("  ... and %d more issues", len(phase.issues) - 10)
+        for warn in phase.warnings[:10]:
+            logger.warning("  - Warning: %s", warn)
+        if len(phase.warnings) > 10:
+            logger.warning("  ... and %d more warnings", len(phase.warnings) - 10)
 
     logger.info("-" * 60)
     logger.info("Total Issues: %d", report.total_issues)
@@ -61,6 +65,11 @@ def handle_audit(args: Namespace, logger: logging.Logger) -> int:
                 md_lines.append("### Issues")
                 for iss in phase.issues:
                     md_lines.append(f"- {iss}")
+            if phase.warnings:
+                md_lines.append("")
+                md_lines.append("### Warnings")
+                for warn in phase.warnings:
+                    md_lines.append(f"- {warn}")
             md_lines.append("")
 
         out_md.write_text("\n".join(md_lines), encoding="utf-8")
