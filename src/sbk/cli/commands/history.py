@@ -44,12 +44,21 @@ def handle_history(args: Namespace, logger: logging.Logger) -> int:
             }
         )
 
-    output = format_output(
-        data,
-        format=fmt,
+    from ...utils.formatters import ReportWriter
+
+    outputs = list(getattr(args, "outputs", None) or [])
+    if getattr(args, "output", None) and isinstance(args.output, str):
+        outputs.append(args.output)
+
+    rw = ReportWriter(
+        data=data,
         headers=["Transaction ID", "Timestamp", "Command", "Status", "Actions", "Description"],
         title="Cronologia Transazioni VaultKeeper",
     )
-
-    print(output)
+    rw.write_reports(
+        console_format=fmt,
+        output_files=outputs,
+        quiet=getattr(args, "quiet", False),
+        logger=logger,
+    )
     return EXIT_SUCCESS

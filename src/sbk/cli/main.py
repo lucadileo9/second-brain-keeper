@@ -88,6 +88,22 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Execute only a specific phase: 1=Structure/Naming, 2=Frontmatter, 3=Taxonomy, 4=Wikilinks, 5=Attachments.",
     )
+    audit_parser.add_argument(
+        "-f",
+        "--format",
+        type=str,
+        default="md",
+        choices=["md", "json", "yaml"],
+        help="Console output format (default: md).",
+    )
+    audit_parser.add_argument(
+        "-o",
+        "--output",
+        action="append",
+        dest="outputs",
+        default=[],
+        help="Export audit report to file (format auto-detected: .md, .json, .yaml). Can be specified multiple times.",
+    )
     audit_parser.add_argument("--json", type=str, default=None, help="Export diagnostic results to a JSON file.")
     audit_parser.add_argument(
         "--report-md", type=str, default=None, help="Export diagnostic results to a Markdown report."
@@ -177,6 +193,14 @@ def build_parser() -> argparse.ArgumentParser:
         default="md",
         choices=["md", "json", "yaml", "csv"],
         help="Output format (default: md).",
+    )
+    history_parser.add_argument(
+        "-o",
+        "--output",
+        action="append",
+        dest="outputs",
+        default=[],
+        help="Export transaction history to file (format auto-detected). Can be specified multiple times.",
     )
 
     # 10. sbk undo
@@ -276,6 +300,14 @@ def build_parser() -> argparse.ArgumentParser:
     tags_show_parser.add_argument(
         "--format", type=str, default="md", choices=["md", "json", "yaml", "csv"], help="Output format."
     )
+    tags_show_parser.add_argument(
+        "-o",
+        "--output",
+        action="append",
+        dest="outputs",
+        default=[],
+        help="Export tag list to file (format auto-detected). Can be specified multiple times.",
+    )
 
     tags_add_parser = tags_subparsers.add_parser("add", help="Add a tag into 00_Tassonomia_Tag.md.")
     tags_add_parser.add_argument("tag", type=str, help="Tag name to add (e.g. area/ricerca).")
@@ -311,15 +343,40 @@ def build_parser() -> argparse.ArgumentParser:
     search_parser.add_argument(
         "--format", type=str, default="md", choices=["md", "json", "yaml", "csv"], help="Output format."
     )
+    search_parser.add_argument(
+        "-o",
+        "--output",
+        action="append",
+        dest="outputs",
+        default=[],
+        help="Export search results to file (format auto-detected). Can be specified multiple times.",
+    )
 
     # 18. sbk graph-health
     graph_parser = subparsers.add_parser("graph-health", help="Execute non-punitive topological graph diagnostics.")
     graph_parser.add_argument("--format", type=str, default="md", choices=["md", "json", "yaml"], help="Output format.")
+    graph_parser.add_argument(
+        "-o",
+        "--output",
+        action="append",
+        dest="outputs",
+        default=[],
+        help="Export graph report to file (format auto-detected). Can be specified multiple times.",
+    )
 
     # 19. sbk map
     map_parser = subparsers.add_parser("map", help="Generate Johnny.Decimal area telemetry and master vault map.")
-    map_parser.add_argument("--output", type=str, default=None, help="Output path for master MOC markdown note.")
-    map_parser.add_argument("--format", type=str, default="md", choices=["md", "json"], help="Output format.")
+    map_parser.add_argument(
+        "-o",
+        "--output",
+        action="append",
+        dest="outputs",
+        default=[],
+        help="Output path for master MOC markdown note or exports. Can be specified multiple times.",
+    )
+    map_parser.add_argument(
+        "--format", type=str, default="md", choices=["md", "json", "yaml"], help="Output format."
+    )
 
     # 20. sbk create
     create_parser = subparsers.add_parser(

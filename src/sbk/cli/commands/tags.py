@@ -27,10 +27,21 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
         fmt = getattr(args, "format", "md")
         tags = v.tags_show(query=query)
 
+        from ...utils.formatters import ReportWriter
+
+        outputs = list(getattr(args, "outputs", None) or [])
+        if getattr(args, "output", None) and isinstance(args.output, str):
+            outputs.append(args.output)
+
         data = [{"Tag": f"#{t}"} for t in tags]
         title = f"Tassonomia Tag ({len(tags)} registrati)" if not query else f"Tassonomia Tag (Filtro: '{query}')"
-        rendered = format_output(data, format=fmt, headers=["Tag"], title=title)
-        print(rendered)
+        rw = ReportWriter(data=data, headers=["Tag"], title=title)
+        rw.write_reports(
+            console_format=fmt,
+            output_files=outputs,
+            quiet=getattr(args, "quiet", False),
+            logger=logger,
+        )
         return EXIT_SUCCESS
 
     if action == "add":

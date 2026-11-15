@@ -17,25 +17,36 @@ def handle_map(args: Namespace, logger: logging.Logger) -> int:
         logger.error("Failed to initialize vault: %s", exc)
         return EXIT_ERROR
 
+    outputs = list(getattr(args, "outputs", None) or [])
     output_arg = getattr(args, "output", None)
+    if output_arg:
+        if isinstance(output_arg, list):
+            outputs.extend(output_arg)
+        elif isinstance(output_arg, str):
+            outputs.append(output_arg)
+
     fmt = getattr(args, "format", "md")
 
     try:
-        report, written_path = v.vault_map(output_file=output_arg)
+        report, _ = v.vault_map(output_file=None)
     except (SBKError, VaultKeeperError) as exc:
         logger.error("Failed to generate vault map: %s", exc)
         return EXIT_ERROR
 
-    if written_path:
-        logger.info("Master MOC map written to: %s", written_path.as_posix())
+    from ...core.map import VaultMapEngine
+    from ...utils.formatters import ReportWriter
 
-    if fmt == "md":
-        from ...core.map import VaultMapEngine
-
-        rendered = VaultMapEngine(v.config).render_markdown_map(report)
-        print(rendered)
-    else:
-        rendered = format_output(report.to_dict(), format=fmt)
-        print(rendered)
+    md_content = VaultMapEngine(v.config).render_markdown_map(report)
+    rw = ReportWriter(
+        data=report.to_dict(),
+        md_rendered=md_content,
+        title=f"Mappa del Vault - {v.root.name}",
+    )
+    rw.write_reports(
+        console_format=fmt,
+        output_files=outputs,
+        quiet=getattr(args, "quiet", False),
+        logger=logger,
+    )
 
     return EXIT_SUCCESS

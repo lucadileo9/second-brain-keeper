@@ -94,3 +94,7 @@ class TemplateError(SBKError):
 
 class CreationError(SBKError):
     """Raised when note creation fails due to collisions or validation errors."""
+
+
+class FormatError(SBKError):
+    """Raised when data cannot be serialized to the requested format."""

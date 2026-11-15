@@ -37,34 +37,49 @@ def handle_search(args: Namespace, logger: logging.Logger) -> int:
         logger.error("Search failed: %s", exc)
         return EXIT_ERROR
 
-    if fmt == "md":
-        if not res.items:
-            print("*(Nessuna nota trovata corrispondente ai criteri specificati)*")
-            return EXIT_SUCCESS
+    from ...utils.formatters import ReportWriter
 
-        rows = []
-        for it in res.items:
-            tags_str = ", ".join(f"#{t}" for t in it.tags[:3])
-            rows.append(
-                {
-                    "Nota": f"[[{Path(it.rel_path).stem}|{it.title}]]",
-                    "Percorso": it.rel_path,
-                    "Tipo": it.tipo or "-",
-                    "Tag": tags_str or "-",
-                    "Estratto": it.snippet or "-",
-                }
-            )
+    outputs = list(getattr(args, "outputs", None) or [])
+    if getattr(args, "output", None) and isinstance(args.output, str):
+        outputs.append(args.output)
 
-        title = f"Risultati Ricerca ({res.total_matches} note trovate)"
-        rendered = format_output(
+    rows = []
+    for it in res.items:
+        tags_str = ", ".join(f"#{t}" for t in it.tags[:3])
+        rows.append(
+            {
+                "Nota": f"[[{Path(it.rel_path).stem}|{it.title}]]",
+                "Percorso": it.rel_path,
+                "Tipo": it.tipo or "-",
+                "Tag": tags_str or "-",
+                "Estratto": it.snippet or "-",
+            }
+        )
+
+    title = f"Risultati Ricerca ({res.total_matches} note trovate)"
+    md_content = (
+        format_output(
             rows,
             format="md",
             headers=["Nota", "Percorso", "Tipo", "Tag", "Estratto"],
             title=title,
         )
-        print(rendered)
-    else:
-        rendered = format_output(res.to_dict(), format=fmt)
-        print(rendered)
+        if rows
+        else f"## {title}\n\n*(Nessuna nota trovata corrispondente ai criteri specificati)*"
+    )
+
+    rw = ReportWriter(
+        data=res.to_dict(),
+        md_rendered=md_content,
+        title=title,
+        headers=["Nota", "Percorso", "Tipo", "Tag", "Estratto"],
+        tabular_data=rows,
+    )
+    rw.write_reports(
+        console_format=fmt,
+        output_files=outputs,
+        quiet=getattr(args, "quiet", False),
+        logger=logger,
+    )
 
     return EXIT_SUCCESS

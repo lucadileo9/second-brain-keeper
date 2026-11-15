@@ -40,39 +40,60 @@ def handle_audit(args: Namespace, logger: logging.Logger) -> int:
     logger.info("Total Issues: %d", report.total_issues)
     logger.info("Vault Health Score: %.2f / 100.0", report.health_score)
 
-    # Export JSON if requested
+    # Export reports if requested
+    outputs = list(getattr(args, "outputs", None) or [])
+    if getattr(args, "output", None) and isinstance(args.output, str):
+        outputs.append(args.output)
     if getattr(args, "json", None):
-        out_json = Path(args.json).resolve()
-        out_json.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
-        logger.info("Saved JSON audit report to: %s", out_json)
-
-    # Export Markdown if requested
+        outputs.append(args.json)
     if getattr(args, "report_md", None):
-        out_md = Path(args.report_md).resolve()
-        md_lines = [
-            f"# Audit Report - {report.vault_root.name}",
-            f"**Timestamp:** {report.timestamp}",
-            f"**Health Score:** {report.health_score:.2f} / 100.0",
-            f"**Total Issues:** {report.total_issues}",
-            "",
-        ]
-        for phase in report.phases:
-            md_lines.append(f"## Phase {phase.phase_id}: {phase.title}")
-            md_lines.append(f"- Issues: {len(phase.issues)}")
-            md_lines.append(f"- Warnings: {len(phase.warnings)}")
-            if phase.issues:
-                md_lines.append("")
-                md_lines.append("### Issues")
-                for iss in phase.issues:
-                    md_lines.append(f"- {iss}")
-            if phase.warnings:
-                md_lines.append("")
-                md_lines.append("### Warnings")
-                for warn in phase.warnings:
-                    md_lines.append(f"- {warn}")
-            md_lines.append("")
+        outputs.append(args.report_md)
 
-        out_md.write_text("\n".join(md_lines), encoding="utf-8")
-        logger.info("Saved Markdown audit report to: %s", out_md)
+    from ...utils.formatters import ReportWriter
+
+    md_lines = [
+        f"# Audit Report - {report.vault_root.name}",
+        f"**Timestamp:** {report.timestamp}",
+        f"**Health Score:** {report.health_score:.2f} / 100.0",
+        f"**Total Issues:** {report.total_issues}",
+        "",
+    ]
+    for phase in report.phases:
+        md_lines.append(f"## Phase {phase.phase_id}: {phase.title}")
+        md_lines.append(f"- Issues: {len(phase.issues)}")
+        md_lines.append(f"- Warnings: {len(phase.warnings)}")
+        if phase.issues:
+            md_lines.append("")
+            md_lines.append("### Issues")
+            for iss in phase.issues:
+                md_lines.append(f"- {iss}")
+        if phase.warnings:
+            md_lines.append("")
+            md_lines.append("### Warnings")
+            for warn in phase.warnings:
+                md_lines.append(f"- {warn}")
+        md_lines.append("")
+
+    fmt = getattr(args, "format", "md")
+    rw = ReportWriter(
+        data=report.to_dict(),
+        md_rendered="\n".join(md_lines),
+        title=f"Audit Report - {report.vault_root.name}",
+    )
+
+    if fmt in ("json", "yaml"):
+        rw.write_reports(
+            console_format=fmt,
+            output_files=outputs,
+            quiet=getattr(args, "quiet", False),
+            logger=logger,
+        )
+    elif outputs:
+        rw.write_reports(
+            console_format="md",
+            output_files=outputs,
+            quiet=True,
+            logger=logger,
+        )
 
     return EXIT_SUCCESS if report.is_clean() else EXIT_ISSUES_FOUND
