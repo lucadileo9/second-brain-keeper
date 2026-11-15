@@ -45,6 +45,10 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
             logger.error("Failed to add tag: %s", exc)
             return EXIT_ERROR
 
+        if res.action == "already_exists":
+            logger.info("Tag '#%s' is already registered in %s", res.tag, res.taxonomy_file.name)
+            return EXIT_SUCCESS
+
         logger.info("%sTag '#%s' successfully registered in %s", prefix, res.tag, res.taxonomy_file.name)
         if res.tx_id:
             logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)

@@ -1,6 +1,7 @@
 """High-level Vault facade providing pure Python API for all vault operations."""
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -626,10 +627,17 @@ class Vault:
     ) -> TagMutationResult:
         """Add a tag to the controlled taxonomy file in alphabetical order."""
         engine = TaxonomyEngine(self.config)
-        if dry_run:
+        clean = tag.lstrip("#").strip().lower()
+        if not clean or not re.match(r"^[a-z0-9][a-z0-9_\-/]*$", clean):
+            raise TaxonomyError(
+                f"Invalid tag format '{tag}'. Tags must match '^[a-z0-9][a-z0-9_\\-/]*$' "
+                f"(lowercase alphanumeric characters, underscores, hyphens, and slashes)."
+            )
+
+        if dry_run or engine.is_valid_tag(clean):
             return engine.add_tag(tag, section=section, dry_run=True)
 
-        with self.journal.begin_transaction("tags", f"Add tag '{tag}' to taxonomy") as tx:
+        with self.journal.begin_transaction("tags", f"Add tag '{clean}' to taxonomy") as tx:
             res = engine.add_tag(tag, section=section, transaction=tx, dry_run=False)
 
         self.refresh()

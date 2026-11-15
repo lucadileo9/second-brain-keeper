@@ -29,6 +29,14 @@ def test_cli_tags_show_add_remove(mock_vault_with_config: Path, capsys) -> None:
     code_add = main(["--root", root_str, "tags", "add", "area/marketing"])
     assert code_add == 0
 
+    # 5b. tags add duplicate (idempotent, exit 0)
+    code_add_dup = main(["--root", root_str, "tags", "add", "area/marketing"])
+    assert code_add_dup == 0
+
+    # 5c. tags add invalid syntax (fails, exit 1)
+    code_add_inv = main(["--root", root_str, "tags", "add", "òèlèwl23"])
+    assert code_add_inv != 0
+
     # Verify presence via show
     capsys.readouterr()  # clear buffer
     main(["--root", root_str, "tags", "show", "--query", "marketing"])

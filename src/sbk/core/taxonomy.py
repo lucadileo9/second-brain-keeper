@@ -93,9 +93,12 @@ class TaxonomyEngine:
         dry_run: bool = False,
     ) -> TagMutationResult:
         """Add a new tag into the controlled taxonomy file in alphabetical order."""
-        clean = tag.lstrip("#").strip()
-        if not clean or re.search(r"\s", clean):
-            raise TaxonomyError(f"Invalid tag format '{tag}': tags must not contain whitespace.")
+        clean = tag.lstrip("#").strip().lower()
+        if not clean or not re.match(r"^[a-z0-9][a-z0-9_\-/]*$", clean):
+            raise TaxonomyError(
+                f"Invalid tag format '{tag}'. Tags must match '^[a-z0-9][a-z0-9_\\-/]*$' "
+                f"(lowercase alphanumeric characters, underscores, hyphens, and slashes)."
+            )
 
         tax_path = self.taxonomy_path
         if not tax_path.is_file():
@@ -119,10 +122,10 @@ class TaxonomyEngine:
         if clean in existing_tags:
             return TagMutationResult(
                 tag=clean,
-                action="add",
+                action="already_exists",
                 taxonomy_file=tax_path,
                 notes_affected_count=0,
-                tx_id=getattr(transaction, "tx_id", None),
+                tx_id=None,
             )
 
         content = tax_path.read_text(encoding="utf-8")
