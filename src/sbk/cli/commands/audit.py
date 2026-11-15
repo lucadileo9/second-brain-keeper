@@ -18,10 +18,13 @@ def handle_audit(args: Namespace, logger: logging.Logger) -> int:
         return EXIT_ERROR
 
     steps = [int(args.step)] if getattr(args, "step", None) else [1, 2, 3, 4, 5]
+    target = getattr(args, "target", None)
     logger.info("Executing VaultKeeper audit for: %s", v.root)
+    if target:
+        logger.info("Target scope: %s", target)
     logger.info("Phases to execute: %s", ", ".join(str(s) for s in steps))
 
-    report = v.audit(phases=steps)
+    report = v.audit(phases=steps, target=target)
 
     logger.info("-" * 60)
     for phase in report.phases:

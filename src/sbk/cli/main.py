@@ -82,11 +82,17 @@ def build_parser() -> argparse.ArgumentParser:
     # 2. sbk audit
     audit_parser = subparsers.add_parser("audit", help="Run 5-phase vault diagnostics and compute Health Score.")
     audit_parser.add_argument(
+        "--target",
+        type=str,
+        default=None,
+        help="Restrict audit scan to a specific note or subfolder.",
+    )
+    audit_parser.add_argument(
         "--step",
         type=int,
         choices=[1, 2, 3, 4, 5],
         default=None,
-        help="Execute only a specific phase: 1=Structure/Naming, 2=Frontmatter, 3=Taxonomy, 4=Wikilinks, 5=Attachments.",
+        help="Execute only a specific phase: Filesystem (1), Naming (2), Frontmatter (3), Taxonomy (4), Referential Integrity (5).",
     )
     audit_parser.add_argument(
         "-f",

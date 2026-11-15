@@ -60,3 +60,43 @@ def test_audit_edge_cases(mock_vault: Path) -> None:
     assert any("Path length" in iss for iss in report.phases[0].issues)
     assert any("Invalid tipo" in iss for iss in report.phases[2].issues)
     assert any("Unregistered tag" in iss for iss in report.phases[3].issues)
+
+
+def test_audit_target_scope(mock_vault: Path) -> None:
+    """Verify audit --target restricts analysis scope while keeping global catalog resolution."""
+    cfg = load_vault_config(root_path=mock_vault)
+
+    # 1. Target single clean note
+    clean_note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
+    rep_single = run_audit(cfg, target=clean_note)
+    assert rep_single.total_issues == 0
+    assert rep_single.health_score == 100.0
+
+    # 2. Target note with broken link
+    broken_note = mock_vault / "20-29_Aree" / "Nota_Beta.md"
+    rep_broken = run_audit(cfg, target=broken_note)
+    assert rep_broken.total_issues == 1
+    assert any("Nota_Inesistente" in iss for iss in rep_broken.phases[4].issues)
+
+    # 3. Target folder
+    proj_folder = mock_vault / "10-19_Progetti"
+    rep_folder = run_audit(cfg, target=proj_folder)
+    assert rep_folder.total_issues == 0
+
+
+def test_audit_multiline_stem_collision(mock_vault: Path) -> None:
+    """Verify stem collision in Phase 5 prints multiline indentation with paths."""
+    cfg = load_vault_config(root_path=mock_vault)
+
+    # Create stem collision
+    dup = mock_vault / "20-29_Aree" / "Progetto_Alpha.md"
+    dup.write_text("# Duplicate Progetto Alpha", encoding="utf-8")
+
+    rep = run_audit(cfg, phases_to_run=[5])
+    phase5 = rep.phases[0]
+    collision_warns = [w for w in phase5.warnings if "Stem collision" in w]
+    assert len(collision_warns) == 1
+    assert "e' ambiguo e risolve a molteplici file:" in collision_warns[0]
+    assert "* 10-19_Progetti/Progetto_Alpha.md" in collision_warns[0]
+    assert "* 20-29_Aree/Progetto_Alpha.md" in collision_warns[0]
+

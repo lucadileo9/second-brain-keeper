@@ -111,9 +111,13 @@ class Vault:
         """Invalidate the in-memory catalog cache."""
         self._catalog = None
 
-    def audit(self, phases: Optional[List[int]] = None) -> AuditReport:
+    def audit(
+        self,
+        phases: Optional[List[int]] = None,
+        target: Optional[Union[str, Path]] = None,
+    ) -> AuditReport:
         """Execute multi-phase diagnostic audit and return structured report."""
-        return run_audit(self.config, phases_to_run=phases)
+        return run_audit(self.config, phases_to_run=phases, target=target)
 
     def check_links(
         self,
