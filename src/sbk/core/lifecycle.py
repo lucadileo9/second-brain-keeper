@@ -654,11 +654,13 @@ def offload_media(
     catalog: VaultCatalog,
     config: VaultConfig,
     wikilink_engine: WikilinkEngine,
+    index_manager: Optional[IndexManager] = None,
     target: Optional[Union[str, Path]] = None,
     transaction: Optional[Any] = None,
     dry_run: bool = False,
 ) -> OffloadResult:
     """Offload heavy binary files (>50MB or specific target) to cold storage."""
+    idx_mgr = index_manager or IndexManager(config)
     # Determine offload destination directory
     if config.offload_folder:
         p = Path(config.offload_folder)
@@ -693,8 +695,10 @@ def offload_media(
     offloaded_records: List[Tuple[Path, Path, int]] = []
     total_bytes = 0
     total_updated_notes = 0
+    affected_folders: Set[Path] = set()
 
     for file_path in files_to_offload:
+        affected_folders.add(file_path.parent)
         try:
             size = file_path.stat().st_size
         except OSError:
@@ -739,6 +743,11 @@ def offload_media(
                         transaction.write_content(note_path, updated_content)
                     else:
                         note_path.write_text(updated_content, encoding="utf-8")
+
+    # Rebuild indices of all source directories that had attachments offloaded
+    for folder in affected_folders:
+        if folder.exists():
+            idx_mgr.rebuild_index(folder, transaction=transaction, dry_run=dry_run)
 
     return OffloadResult(
         offloaded_files=offloaded_records,

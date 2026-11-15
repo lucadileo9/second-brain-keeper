@@ -589,12 +589,14 @@ class Vault:
     ) -> OffloadResult:
         """Offload heavy binary files (>50MB or specific target) to cold storage."""
         link_engine = WikilinkEngine(self.config)
+        idx_mgr = IndexManager(self.config)
 
         if dry_run:
             return offload_media(
                 self.catalog,
                 self.config,
                 link_engine,
+                index_manager=idx_mgr,
                 target=target,
                 dry_run=True,
             )
@@ -605,6 +607,7 @@ class Vault:
                 self.catalog,
                 self.config,
                 link_engine,
+                index_manager=idx_mgr,
                 target=target,
                 transaction=tx,
                 dry_run=False,
