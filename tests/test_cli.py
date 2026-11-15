@@ -208,3 +208,16 @@ def test_cli_logging_file(empty_temp_dir: Path) -> None:
         assert "Message for file logging" in log_path.read_text(encoding="utf-8")
     finally:
         close_cli_logger(logger)
+
+
+def test_cli_outside_vault_fails_with_exit_code_1(empty_temp_dir: Path, monkeypatch, capsys) -> None:
+    """Verify running CLI commands outside a vault without --root returns exit code 1."""
+    isolated_dir = empty_temp_dir / "RandomFolder"
+    isolated_dir.mkdir()
+    monkeypatch.chdir(isolated_dir)
+
+    code = main(["audit"])
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "No Obsidian vault found" in captured.out or "No Obsidian vault found" in captured.err
+

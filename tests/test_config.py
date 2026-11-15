@@ -128,3 +128,34 @@ def test_audit_report_model() -> None:
     assert d["total_issues"] == 1
     assert d["health_score"] == 85.0
     assert len(d["phases"]) == 1
+
+
+def test_discover_vault_root_upward_traversal(mock_vault_with_config: Path, monkeypatch) -> None:
+    """Verify git-style upward directory traversal discovers vault root from nested subfolder."""
+    from sbk.config import discover_vault_root
+
+    nested_subfolder = mock_vault_with_config / "20-29_Aree" / "Sub_Topic" / "Deep"
+    nested_subfolder.mkdir(parents=True, exist_ok=True)
+
+    discovered = discover_vault_root(nested_subfolder)
+    assert discovered == mock_vault_with_config
+
+    monkeypatch.chdir(nested_subfolder)
+    cfg = load_vault_config(root_path=None)
+    assert cfg.root_path == mock_vault_with_config
+
+
+def test_outside_vault_without_root_raises_error(empty_temp_dir: Path, monkeypatch) -> None:
+    """Verify loading config or running outside a vault raises VaultNotFoundError."""
+    from sbk.config import discover_vault_root
+
+    isolated_dir = empty_temp_dir / "IsolatedNoVault"
+    isolated_dir.mkdir()
+
+    discovered = discover_vault_root(isolated_dir)
+    assert discovered is None
+
+    monkeypatch.chdir(isolated_dir)
+    with pytest.raises(VaultNotFoundError, match="No Obsidian vault found"):
+        load_vault_config(root_path=None)
+

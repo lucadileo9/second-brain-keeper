@@ -1,6 +1,6 @@
 """SBK (Second Brain Keeper): Universal Second Brain governance, link validator and maintenance toolkit."""
 
-from .config import generate_default_config_content, load_vault_config
+from .config import discover_vault_root, generate_default_config_content, load_vault_config
 from .exceptions import (
     AttachmentError,
     ConfigurationError,
@@ -34,6 +34,7 @@ __all__ = [
     "Vault",
     "VaultConfig",
     "load_vault_config",
+    "discover_vault_root",
     "generate_default_config_content",
     "BrokenLink",
     "CreateResult",
