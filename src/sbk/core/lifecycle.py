@@ -407,16 +407,20 @@ def move_item(
     new_index_updated = False
 
     if resolved_src.parent != resolved_dest_dir:
-        _, old_index_updated = index_manager.rebuild_index(
-            resolved_src.parent,
-            transaction=transaction,
-            dry_run=dry_run,
-        )
-        _, new_index_updated = index_manager.rebuild_index(
-            resolved_dest_dir,
-            transaction=transaction,
-            dry_run=dry_run,
-        )
+        if dry_run:
+            old_index_updated = True
+            new_index_updated = True
+        else:
+            _, old_index_updated = index_manager.rebuild_index(
+                resolved_src.parent,
+                transaction=transaction,
+                dry_run=False,
+            )
+            _, new_index_updated = index_manager.rebuild_index(
+                resolved_dest_dir,
+                transaction=transaction,
+                dry_run=False,
+            )
 
     return MoveResult(
         source_path=resolved_src,

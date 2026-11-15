@@ -227,6 +227,8 @@ def test_move_errors_and_dry_run(mock_vault_with_config: Path) -> None:
     # Dry-run
     res_dry = v.move(src_note, dest_dir, dry_run=True)
     assert res_dry.dest_path == dest_dir / "Nota_Beta.md"
+    assert res_dry.old_index_updated is True
+    assert res_dry.new_index_updated is True
     assert src_note.exists()
     assert not (dest_dir / "Nota_Beta.md").exists()
 
