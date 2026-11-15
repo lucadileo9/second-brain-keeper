@@ -161,12 +161,19 @@ def rename_item(
             transaction=transaction,
             dry_run=dry_run,
         )
+        if not is_md and resolved_src.suffix:
+            updated_links += wikilink_engine.refactor_in_vault(
+                resolved_src.name,
+                dest_path.name,
+                transaction=transaction,
+                dry_run=dry_run,
+            )
 
     # Synchronize folder index
     index_updated = index_manager.rename_entry(
         resolved_src.parent,
-        old_stem,
-        new_stem,
+        old_stem if is_md else resolved_src.name,
+        new_stem if is_md else dest_path.name,
         transaction=transaction,
         dry_run=dry_run,
     )
@@ -341,6 +348,13 @@ def batch_rename_items(
                 transaction=transaction,
                 dry_run=dry_run,
             )
+            if not is_md and src_p.suffix:
+                updated_links += wikilink_engine.refactor_in_vault(
+                    src_p.name,
+                    dest_path.name,
+                    transaction=transaction,
+                    dry_run=dry_run,
+                )
 
         affected_folders.add(src_p.parent)
 

@@ -110,3 +110,31 @@ def test_rename_errors_and_same_name(mock_vault: Path) -> None:
     dup.write_text("# Existing\n", encoding="utf-8")
     with pytest.raises(NamingError):
         rename_vault_item(catalog, cfg, target, "Existing.md")
+
+
+def test_rename_non_md_attachment_with_wikilinks(mock_vault: Path) -> None:
+    """Verify that renaming a non-md attachment updates wikilinks with extension."""
+    cfg = load_vault_config(mock_vault)
+    catalog = build_vault_catalog(cfg)
+
+    att_dir = mock_vault / "90-99_Allegati"
+    att_dir.mkdir(parents=True, exist_ok=True)
+    img_old = att_dir / "diagram_old.png"
+    img_old.write_bytes(b"FAKE_PNG_CONTENT")
+
+    referencing_note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
+    note_content = referencing_note.read_text(encoding="utf-8")
+    referencing_note.write_text(
+        note_content + "\n\n![[diagram_old.png]]\n[[diagram_old.png|Vedi Diagramma]]\n",
+        encoding="utf-8",
+    )
+
+    new_img, count = rename_vault_item(catalog, cfg, img_old, "diagram_new.png")
+    assert new_img.is_file()
+    assert new_img.name == "diagram_new.png"
+    assert count == 2
+
+    updated_note_content = referencing_note.read_text(encoding="utf-8")
+    assert "![[diagram_new.png]]" in updated_note_content
+    assert "[[diagram_new.png|Vedi Diagramma]]" in updated_note_content
+    assert "diagram_old.png" not in updated_note_content

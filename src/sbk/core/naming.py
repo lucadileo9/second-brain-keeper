@@ -149,6 +149,7 @@ def rename_vault_item(
     old_stem = resolved_old.stem
     new_stem = dest_path.stem
     is_dir = resolved_old.is_dir()
+    is_md = not is_dir and resolved_old.suffix.lower() == ".md"
 
     total_links_updated = 0
 
@@ -163,6 +164,10 @@ def rename_vault_item(
             continue
 
         new_content, count = update_wikilinks_in_content(content, old_stem, new_stem)
+        if not is_dir and not is_md and resolved_old.suffix:
+            new_content, count_ext = update_wikilinks_in_content(new_content, resolved_old.name, dest_path.name)
+            count += count_ext
+
         if count > 0:
             total_links_updated += count
             if not dry_run:
