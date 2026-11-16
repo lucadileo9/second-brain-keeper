@@ -5,16 +5,15 @@ import logging
 from argparse import Namespace
 from pathlib import Path
 
-from ...vault import Vault
+from ...utils.formatters import ReportWriter
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_ISSUES_FOUND, EXIT_SUCCESS
 
 
 def handle_audit(args: Namespace, logger: logging.Logger) -> int:
     """Execute unified multi-phase audit and format results."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     steps = [int(args.step)] if getattr(args, "step", None) else [1, 2, 3, 4, 5]
@@ -44,15 +43,11 @@ def handle_audit(args: Namespace, logger: logging.Logger) -> int:
     logger.info("Vault Health Score: %.2f / 100.0", report.health_score)
 
     # Export reports if requested
-    outputs = list(getattr(args, "outputs", None) or [])
-    if getattr(args, "output", None) and isinstance(args.output, str):
-        outputs.append(args.output)
+    outputs = ReportWriter.extract_outputs(args)
     if getattr(args, "json", None):
         outputs.append(args.json)
     if getattr(args, "report_md", None):
         outputs.append(args.report_md)
-
-    from ...utils.formatters import ReportWriter
 
     md_lines = [
         f"# Audit Report - {report.vault_root.name}",

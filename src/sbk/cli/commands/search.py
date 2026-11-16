@@ -5,17 +5,15 @@ from argparse import Namespace
 from pathlib import Path
 
 from ...exceptions import SearchError, VaultKeeperError
-from ...utils.formatters import format_output
-from ...vault import Vault
+from ...utils.formatters import ReportWriter, format_output
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_search(args: Namespace, logger: logging.Logger) -> int:
     """Execute semantic query and filter search across notes."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     query = getattr(args, "query", None)
@@ -37,11 +35,7 @@ def handle_search(args: Namespace, logger: logging.Logger) -> int:
         logger.error("Search failed: %s", exc)
         return EXIT_ERROR
 
-    from ...utils.formatters import ReportWriter
-
-    outputs = list(getattr(args, "outputs", None) or [])
-    if getattr(args, "output", None) and isinstance(args.output, str):
-        outputs.append(args.output)
+    outputs = ReportWriter.extract_outputs(args)
 
     rows = []
     for it in res.items:

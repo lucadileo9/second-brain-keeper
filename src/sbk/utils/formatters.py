@@ -160,6 +160,18 @@ def format_output(
 class ReportWriter:
     """Centralized dispatcher for rendering and exporting reports across CLI commands."""
 
+    @classmethod
+    def extract_outputs(cls, args: Any) -> List[str]:
+        """Extract and normalize all destination file paths from CLI args (-o/--output)."""
+        outputs: List[str] = list(getattr(args, "outputs", None) or [])
+        single_out = getattr(args, "output", None)
+        if single_out:
+            if isinstance(single_out, list):
+                outputs.extend(str(p) for p in single_out if p)
+            elif isinstance(single_out, str):
+                outputs.append(single_out)
+        return [str(p) for p in outputs if p]
+
     def __init__(
         self,
         data: Any,

@@ -4,17 +4,15 @@ import logging
 from argparse import Namespace
 
 from ...exceptions import TaxonomyError, VaultKeeperError
-from ...utils.formatters import format_output
-from ...vault import Vault
+from ...utils.formatters import ReportWriter, format_output
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_tags(args: Namespace, logger: logging.Logger) -> int:
     """Inspect and manipulate controlled tag taxonomy."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     action = getattr(args, "tag_action", None)
@@ -27,11 +25,7 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
         fmt = getattr(args, "format", "md")
         tags = v.tags_show(query=query)
 
-        from ...utils.formatters import ReportWriter
-
-        outputs = list(getattr(args, "outputs", None) or [])
-        if getattr(args, "output", None) and isinstance(args.output, str):
-            outputs.append(args.output)
+        outputs = ReportWriter.extract_outputs(args)
 
         data = [{"Tag": f"#{t}"} for t in tags]
         title = f"Tassonomia Tag ({len(tags)} registrati)" if not query else f"Tassonomia Tag (Filtro: '{query}')"

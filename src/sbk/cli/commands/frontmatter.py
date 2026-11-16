@@ -10,32 +10,34 @@ from ...core.frontmatter import (
 )
 from ...core.traversal import walk_vault_files
 from ...exceptions import FrontmatterError, VaultKeeperError
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_frontmatter(args: Namespace, logger: logging.Logger) -> int:
     """Dispatch frontmatter subcommands."""
     subaction = getattr(args, "fm_action", None)
+    if not subaction:
+        logger.error("Unknown frontmatter action. Choose: set-type, add-tags, sanitize-tags.")
+        return EXIT_ERROR
+
+    v = get_vault(args, logger)
+    if not v:
+        return EXIT_ERROR
+
     if subaction == "set-type":
-        return handle_set_type(args, logger)
+        return handle_set_type(args, logger, v)
     elif subaction == "add-tags":
-        return handle_add_tags(args, logger)
+        return handle_add_tags(args, logger, v)
     elif subaction == "sanitize-tags":
-        return handle_sanitize_tags(args, logger)
+        return handle_sanitize_tags(args, logger, v)
     else:
         logger.error("Unknown frontmatter action. Choose: set-type, add-tags, sanitize-tags.")
         return EXIT_ERROR
 
 
-def handle_set_type(args: Namespace, logger: logging.Logger) -> int:
+def handle_set_type(args: Namespace, logger: logging.Logger, v: Any) -> int:
     """Set or update the tipo YAML frontmatter field."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
-        return EXIT_ERROR
-
     batch_arg = getattr(args, "batch", None)
     target = getattr(args, "target", None)
     new_type = getattr(args, "type", None)
@@ -87,14 +89,8 @@ def handle_set_type(args: Namespace, logger: logging.Logger) -> int:
     return EXIT_SUCCESS
 
 
-def handle_add_tags(args: Namespace, logger: logging.Logger) -> int:
+def handle_add_tags(args: Namespace, logger: logging.Logger, v: Any) -> int:
     """Inject or overwrite tags in a note's frontmatter."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
-        return EXIT_ERROR
-
     batch_arg = getattr(args, "batch", None)
     target = getattr(args, "target", None)
     tags = getattr(args, "tags", None)
@@ -145,14 +141,8 @@ def handle_add_tags(args: Namespace, logger: logging.Logger) -> int:
     return EXIT_SUCCESS
 
 
-def handle_sanitize_tags(args: Namespace, logger: logging.Logger) -> int:
+def handle_sanitize_tags(args: Namespace, logger: logging.Logger, v: Any) -> int:
     """Sanitize and apply tag replacements based on taxonomy and config mapping."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
-        return EXIT_ERROR
-
     dry_run = getattr(args, "dry_run", False)
     target = getattr(args, "target", None)
     prefix = "[DRY-RUN] " if dry_run else ""

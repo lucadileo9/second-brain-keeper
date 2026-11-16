@@ -4,17 +4,15 @@ import logging
 from argparse import Namespace
 from typing import Any, Dict, List
 
-from ...utils.formatters import OutputFormat, format_output
-from ...vault import Vault
+from ...utils.formatters import OutputFormat, ReportWriter, format_output
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_history(args: Namespace, logger: logging.Logger) -> int:
     """List historical vaultkeeper transactions."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     limit = getattr(args, "limit", 20)
@@ -44,11 +42,7 @@ def handle_history(args: Namespace, logger: logging.Logger) -> int:
             }
         )
 
-    from ...utils.formatters import ReportWriter
-
-    outputs = list(getattr(args, "outputs", None) or [])
-    if getattr(args, "output", None) and isinstance(args.output, str):
-        outputs.append(args.output)
+    outputs = ReportWriter.extract_outputs(args)
 
     rw = ReportWriter(
         data=data,

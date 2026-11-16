@@ -4,16 +4,14 @@ import logging
 from argparse import Namespace
 
 from ...exceptions import NamingError, VaultKeeperError
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_rename(args: Namespace, logger: logging.Logger) -> int:
     """Rename a note or asset with global wikilink refactoring and index synchronization."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     batch_arg = getattr(args, "batch", None)

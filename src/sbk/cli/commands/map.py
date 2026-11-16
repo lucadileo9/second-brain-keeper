@@ -3,28 +3,20 @@
 import logging
 from argparse import Namespace
 
+from ...core.map import VaultMapEngine
 from ...exceptions import SBKError, VaultKeeperError
-from ...utils.formatters import format_output
-from ...vault import Vault
+from ...utils.formatters import ReportWriter, format_output
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_map(args: Namespace, logger: logging.Logger) -> int:
     """Generate high-level Johnny.Decimal area telemetry and master vault map."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
-    outputs = list(getattr(args, "outputs", None) or [])
-    output_arg = getattr(args, "output", None)
-    if output_arg:
-        if isinstance(output_arg, list):
-            outputs.extend(output_arg)
-        elif isinstance(output_arg, str):
-            outputs.append(output_arg)
-
+    outputs = ReportWriter.extract_outputs(args)
     fmt = getattr(args, "format", "md")
 
     try:
@@ -32,9 +24,6 @@ def handle_map(args: Namespace, logger: logging.Logger) -> int:
     except (SBKError, VaultKeeperError) as exc:
         logger.error("Failed to generate vault map: %s", exc)
         return EXIT_ERROR
-
-    from ...core.map import VaultMapEngine
-    from ...utils.formatters import ReportWriter
 
     md_content = VaultMapEngine(v.config).render_markdown_map(report)
     rw = ReportWriter(
