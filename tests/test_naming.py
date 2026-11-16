@@ -4,6 +4,7 @@ from pathlib import Path
 
 from sbk.config import load_vault_config
 from sbk.core.naming import (
+    batch_normalize,
     clean_disallowed_characters,
     normalize_name,
     normalize_stem,
@@ -129,12 +130,45 @@ def test_rename_non_md_attachment_with_wikilinks(mock_vault: Path) -> None:
         encoding="utf-8",
     )
 
-    new_img, count = rename_vault_item(catalog, cfg, img_old, "diagram_new.png")
+    new_img, count = rename_vault_item(catalog, cfg, img_old, "Diagram_New.png")
     assert new_img.is_file()
-    assert new_img.name == "diagram_new.png"
+    assert new_img.name == "Diagram_New.png"
     assert count == 2
 
     updated_note_content = referencing_note.read_text(encoding="utf-8")
-    assert "![[diagram_new.png]]" in updated_note_content
-    assert "[[diagram_new.png|Vedi Diagramma]]" in updated_note_content
+    assert "![[Diagram_New.png]]" in updated_note_content
+    assert "[[Diagram_New.png|Vedi Diagramma]]" in updated_note_content
     assert "diagram_old.png" not in updated_note_content
+
+
+def test_batch_normalize_updates_index_and_links(mock_vault: Path) -> None:
+    """Verify batch_normalize normalizes filenames, refactors links, and updates folder index."""
+    cfg = load_vault_config(mock_vault)
+
+    # Create unnormalized note with lowercase and spaces
+    proj_dir = mock_vault / "10-19_Progetti"
+    bad_note = proj_dir / "nuovo progetto test.md"
+    bad_note.write_text("# Nuovo Progetto Test\nContenuto di prova.", encoding="utf-8")
+
+    # Reference it from another note
+    ref_note = mock_vault / "20-29_Aree" / "Nota_Beta.md"
+    ref_content = ref_note.read_text(encoding="utf-8")
+    ref_note.write_text(ref_content + "\n\nLink a [[nuovo progetto test]].", encoding="utf-8")
+
+    catalog = build_vault_catalog(cfg)
+    results = batch_normalize(catalog, cfg, target_dir=proj_dir, dry_run=False)
+
+    assert len(results) >= 1
+    norm_dest = proj_dir / "Nuovo_Progetto_Test.md"
+    assert norm_dest.is_file()
+    assert not bad_note.exists()
+
+    # Incoming link updated
+    updated_ref = ref_note.read_text(encoding="utf-8")
+    assert "[[Nuovo_Progetto_Test]]" in updated_ref
+    assert "[[nuovo progetto test]]" not in updated_ref
+
+    # Folder index updated with normalized entry
+    idx = proj_dir / "00_Indice_Progetti.md"
+    assert idx.is_file()
+    assert "[[Nuovo_Progetto_Test]]" in idx.read_text(encoding="utf-8")
