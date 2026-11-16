@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
 from ..models import SearchResult, SearchResultItem, VaultCatalog, VaultConfig
-from ..utils.helpers import truncate_text
+from ..utils.helpers import resolve_vault_path, truncate_text
 from .frontmatter import extract_inline_tags, parse_note_content
 from .links import WikilinkEngine
 from .traversal import walk_vault_files
@@ -29,8 +29,7 @@ class SearchEngine:
         """Search notes in the vault matching combined criteria."""
         folder_filter_p: Optional[Path] = None
         if folder:
-            p = Path(folder)
-            folder_filter_p = (self.config.root_path / p if not p.is_absolute() else p).resolve()
+            folder_filter_p = resolve_vault_path(folder, self.config.root_path)
 
         clean_query = query.strip() if query else None
         clean_tag = tag.lstrip("#").strip().lower() if tag else None

@@ -15,7 +15,7 @@ from ..models import (
     VaultCatalog,
     VaultConfig,
 )
-from ..utils.helpers import format_bytes, truncate_text
+from ..utils.helpers import format_bytes, resolve_vault_path, truncate_text
 from .attachments import find_heavy_files
 from .document import MarkdownDocument
 from .indices import IndexManager
@@ -226,7 +226,7 @@ def batch_rename_items(
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
     sources_being_renamed = {
-        (root_resolved / Path(s) if not Path(s).is_absolute() else Path(s)).resolve() for s in mapping.keys()
+        resolve_vault_path(s, root_resolved) for s in mapping.keys()
     }
 
     for src_raw, new_name in mapping.items():
@@ -236,8 +236,7 @@ def batch_rename_items(
                 "Target must be a file name or stem without path separators. To move items, use 'sbk move'."
             )
 
-        src_raw_p = Path(src_raw)
-        src_p = (root_resolved / src_raw_p if not src_raw_p.is_absolute() else src_raw_p).resolve()
+        src_p = resolve_vault_path(src_raw, root_resolved)
 
         if not src_p.exists():
             raise NamingError(f"Batch rename failed pre-flight: Source file does not exist: '{src_raw}'")
@@ -463,14 +462,12 @@ def batch_move_items(
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
     for src_raw, dest_raw in mapping.items():
-        src_raw_p = Path(src_raw)
-        src_p = (root_resolved / src_raw_p if not src_raw_p.is_absolute() else src_raw_p).resolve()
+        src_p = resolve_vault_path(src_raw, root_resolved)
 
         if not src_p.exists():
             raise LifecycleError(f"Batch move failed pre-flight: Source path does not exist: '{src_raw}'")
 
-        dest_raw_p = Path(dest_raw)
-        dest_target = (root_resolved / dest_raw_p if not dest_raw_p.is_absolute() else dest_raw_p).resolve()
+        dest_target = resolve_vault_path(dest_raw, root_resolved)
 
         if src_p.is_file():
             if dest_target.suffix == src_p.suffix and not dest_target.is_dir():
@@ -494,7 +491,7 @@ def batch_move_items(
         if dest_file.exists() and dest_file != src_p:
             # Allow destination only if it is also a source being moved away in this same batch
             is_src_in_batch = any(
-                (root_resolved / Path(s) if not Path(s).is_absolute() else Path(s)).resolve() == dest_file
+                resolve_vault_path(s, root_resolved) == dest_file
                 for s in mapping.keys()
             )
             if not is_src_in_batch:
@@ -564,8 +561,7 @@ def archive_item(
 
     # Determine archive root directory
     if config.archive_path:
-        p = Path(config.archive_path)
-        archive_root = (config.root_path / p if not p.is_absolute() else p).resolve()
+        archive_root = resolve_vault_path(config.archive_path, config.root_path)
     else:
         archive_root = (config.root_path.parent / "Archive").resolve()
 
@@ -667,18 +663,16 @@ def offload_media(
     idx_mgr = index_manager or IndexManager(config)
     # Determine offload destination directory
     if config.offload_folder:
-        p = Path(config.offload_folder)
-        offload_dir = (config.root_path / p if not p.is_absolute() else p).resolve()
+        offload_dir = resolve_vault_path(config.offload_folder, config.root_path)
     elif config.archive_path:
-        p = Path(config.archive_path)
-        archive_root = (config.root_path / p if not p.is_absolute() else p).resolve()
+        archive_root = resolve_vault_path(config.archive_path, config.root_path)
         offload_dir = archive_root / "90-99_Allegati_Pesanti"
     else:
         offload_dir = (config.root_path.parent / "Archive" / "90-99_Allegati_Pesanti").resolve()
 
     files_to_offload: List[Path] = []
     if target:
-        target_p = (config.root_path / target if not Path(target).is_absolute() else Path(target)).resolve()
+        target_p = resolve_vault_path(target, config.root_path)
         if target_p.is_file():
             files_to_offload.append(target_p)
         elif target_p.is_dir():

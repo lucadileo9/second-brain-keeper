@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from sbk.utils.helpers import compute_file_hash, format_bytes, truncate_text
+from sbk.utils.helpers import compute_file_hash, format_bytes, resolve_vault_path, truncate_text
 
 
 def test_format_bytes() -> None:
@@ -37,3 +37,29 @@ def test_is_ignored_path() -> None:
     assert is_ignored_path(Path("/vault/.obsidian/plugins"), ignored) is True
     assert is_ignored_path(Path("/vault/10-19_Progetti/Note.md"), ignored) is False
     assert is_ignored_path(Path("/vault/.hidden_folder"), ignored) is True
+
+
+def test_resolve_vault_path(empty_temp_dir: Path) -> None:
+    """Verify resolve_vault_path anchors relative paths and preserves absolute paths."""
+    vault_root = empty_temp_dir / "MyVault"
+    vault_root.mkdir()
+    sub = vault_root / "10-19_Progetti"
+    sub.mkdir()
+    target_file = sub / "Nota.md"
+    target_file.touch()
+
+    # Relative string
+    res_str = resolve_vault_path("10-19_Progetti/Nota.md", vault_root)
+    assert res_str == target_file.resolve()
+
+    # Relative Path
+    res_path = resolve_vault_path(Path("10-19_Progetti/Nota.md"), vault_root)
+    assert res_path == target_file.resolve()
+
+    # Absolute path
+    res_abs = resolve_vault_path(target_file.resolve(), vault_root)
+    assert res_abs == target_file.resolve()
+
+    # Path with relative navigation (..)
+    res_nav = resolve_vault_path("10-19_Progetti/../10-19_Progetti/Nota.md", vault_root)
+    assert res_nav == target_file.resolve()

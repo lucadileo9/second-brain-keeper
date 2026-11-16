@@ -17,6 +17,7 @@ from ..exceptions import (
     UndoError,
 )
 from ..models import ActionRecord, RedoResult, TransactionRecord, UndoResult
+from ..utils.helpers import resolve_vault_path
 
 
 def compute_content_hash(text: Optional[str]) -> Optional[str]:
@@ -69,7 +70,7 @@ class TransactionContext:
 
     def _resolve_rel(self, path: Union[str, Path]) -> str:
         """Return path relative to vault root as a normalized POSIX string."""
-        abs_p = (self.root_path / path if not Path(path).is_absolute() else Path(path)).resolve()
+        abs_p = resolve_vault_path(path, self.root_path)
         try:
             return abs_p.relative_to(self.root_path).as_posix()
         except ValueError:
@@ -82,7 +83,7 @@ class TransactionContext:
         encoding: str = "utf-8",
     ) -> None:
         """Write content to a file while recording pre-state and post-state."""
-        abs_path = (self.root_path / file_path if not Path(file_path).is_absolute() else Path(file_path)).resolve()
+        abs_path = resolve_vault_path(file_path, self.root_path)
         rel_path = self._resolve_rel(abs_path)
         abs_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -124,8 +125,8 @@ class TransactionContext:
         dest_path: Union[str, Path],
     ) -> None:
         """Move or rename a file or directory while recording previous and new path."""
-        abs_src = (self.root_path / source_path if not Path(source_path).is_absolute() else Path(source_path)).resolve()
-        abs_dest = (self.root_path / dest_path if not Path(dest_path).is_absolute() else Path(dest_path)).resolve()
+        abs_src = resolve_vault_path(source_path, self.root_path)
+        abs_dest = resolve_vault_path(dest_path, self.root_path)
 
         if not abs_src.exists():
             raise JournalError(f"Cannot move nonexistent path: {abs_src}")
@@ -159,7 +160,7 @@ class TransactionContext:
         trash_folder: Optional[str] = None,
     ) -> None:
         """Delete or soft-delete a file while logging rollback capabilities."""
-        abs_path = (self.root_path / file_path if not Path(file_path).is_absolute() else Path(file_path)).resolve()
+        abs_path = resolve_vault_path(file_path, self.root_path)
         if not abs_path.exists():
             return
 

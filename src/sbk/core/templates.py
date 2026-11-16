@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from ..exceptions import CreationError, TemplateError
 from ..models import VaultConfig
+from ..utils.helpers import resolve_vault_path
 from .document import MarkdownDocument
 
 
@@ -36,8 +37,7 @@ def resolve_target_folder(
         CreationError: If custom_folder resolves outside the vault root.
     """
     if custom_folder is not None:
-        p = Path(custom_folder)
-        resolved = (vault_root / p if not p.is_absolute() else p).resolve()
+        resolved = resolve_vault_path(custom_folder, vault_root)
         try:
             resolved.relative_to(vault_root.resolve())
         except ValueError:
@@ -45,7 +45,7 @@ def resolve_target_folder(
         return resolved
 
     clean_inbox = str(inbox_folder).strip() if inbox_folder else "00_Inbox"
-    return (vault_root / clean_inbox).resolve()
+    return resolve_vault_path(clean_inbox, vault_root)
 
 
 class TemplateEngine:

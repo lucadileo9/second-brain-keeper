@@ -8,6 +8,7 @@ import yaml
 
 from ..exceptions import FrontmatterError, TaxonomyError
 from ..models import Frontmatter, Note
+from ..utils.helpers import resolve_vault_path
 
 FRONTMATTER_PATTERN = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n(.*)$", re.DOTALL)
 CODE_BLOCK_PATTERN = re.compile(r"```[\s\S]*?```|`[^`\n]+`")
@@ -232,7 +233,7 @@ def batch_set_type(
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
     for target_raw, new_type in mapping.items():
-        p = (root_resolved / Path(target_raw) if not Path(target_raw).is_absolute() else Path(target_raw)).resolve()
+        p = resolve_vault_path(target_raw, root_resolved)
 
         if not p.is_file():
             raise FrontmatterError(f"Batch set-type failed pre-flight: Note not found: '{target_raw}'")
@@ -307,7 +308,7 @@ def batch_add_tags(
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
     for target_raw, tags_raw in mapping.items():
-        p = (root_resolved / Path(target_raw) if not Path(target_raw).is_absolute() else Path(target_raw)).resolve()
+        p = resolve_vault_path(target_raw, root_resolved)
 
         if not p.is_file():
             raise FrontmatterError(f"Batch add-tags failed pre-flight: Note not found: '{target_raw}'")
