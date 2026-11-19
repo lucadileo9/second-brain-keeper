@@ -130,7 +130,11 @@ Carica e restituisce il record completo per uno specifico identificativo transaz
 
 ##### `undo(tx_id: Optional[str] = None, dry_run: bool = False) -> UndoResult`
 Annulla una transazione completata. 
-Se `tx_id` non è specificato, individua automaticamente **la più recente transazione non ancora revertita**.
+Se `tx_id` non è specificato, individua automaticamente **la più recente transazione attiva non ancora revertita**.
+
+##### `redo(tx_id: Optional[str] = None, dry_run: bool = False) -> RedoResult`
+Riapplica una transazione precedentemente annullata tramite `undo()`.
+Se `tx_id` non è specificato, individua automaticamente **la più recente transazione revertita** (`reverted=True`).
 
 ---
 
@@ -184,7 +188,30 @@ flowchart TD
 
 ---
 
-## 5. Politica di Pruning Automatico (`prune_history`)
+## 5. Algoritmo di Ri-Applicazione (`redo`)
+
+Il metodo `redo()` consente di ripristinare le mutazioni di una transazione annullata tramite `undo()` applicando verifiche di consistenza speculari:
+
+1. **Selezione della Transazione**: Se `tx_id` non è specificato, cerca la transazione più recente avente `reverted=True`. Se la transazione selezionata non risulta revertita, solleva `RedoError`.
+2. **Pre-flight Integrity Check**:
+   - Per `write_content` e `create_file`: verifica che il file su disco coincida con lo stato di pre-mutazione (`hash_before`). Se il file è stato alterato da terzi nel frattempo, solleva `RedoConflictError`.
+   - Per `move_file`: verifica che la posizione originaria esista ancora e che la destinazione prevista non sia occupata da file estranei.
+3. **Riesecuzione Sequenziale**: Se tutte le verifiche pre-volo hanno successo e `dry_run=False`, il motore riapplica le azioni nell'ordine cronologico originario.
+4. **Finalizzazione dello Stato**: Il campo `reverted` viene reimpostato a `False`, il timestamp aggiornato e il file `.json.gz` salvato su disco.
+
+---
+
+## 6. Indice Veloce delle Transazioni (`index.json`)
+
+Per evitare di decomprimere l'intero archivio `.sbk/history/*.json.gz` a ogni interrogazione di cronologia (`sbk history`), il Journal mantiene un file di indice aggregato e compatto in:
+```text
+.sbk/history/index.json
+```
+L'indice registra i metadati chiave di ciascuna transazione (`tx_id`, `command`, `timestamp`, `reverted`, `description`, numero azioni), consentendo ricerche e paginazioni immediate a costo computazionale trascurabile.
+
+---
+
+## 7. Politica di Pruning Automatico (`prune_history`)
 
 Per prevenire la proliferazione indefinita di file storici su installazioni di lunga durata:
 - A ogni salvataggio di transazione (`_save_transaction`), il journal invoca `prune_history(keep=self.max_transactions)`.
