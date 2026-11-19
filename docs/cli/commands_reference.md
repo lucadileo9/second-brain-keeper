@@ -1,7 +1,10 @@
-# Manuale di Riferimento dei Comandi CLI (`vk`)
+# Manuale di Riferimento dei Comandi CLI (`sbk` / `vk`)
 
 Questo documento fornisce la specifica tecnica completa per ciascuno dei **20 comandi** esposti dalla CLI di `second-brain-keeper`. 
 Per ciascun comando sono descritti: la finalità operativa, la sintassi completa, l'interazione con le classi interne del sistema, i codici di uscita ed esempi pratici di utilizzo.
+
+> [!NOTE] Diagnostica Consolidata
+> I precedenti comandi `check-links` e `disambiguate` sono stati integrati direttamente nella **Fase 5 di `sbk audit`** (Referential Integrity e Collisioni di Stem), eliminando la frammentazione e offrendo un quadro diagnostico unificato.
 
 ---
 
@@ -17,7 +20,7 @@ sbk init [--target DIRECTORY] [--force]
 - `--force`: Sovrascrive il file se già presente.
 
 ### Interazione Architetturale
-`handle_init()` $\rightarrow$ Genera il template TOML standard basato sui campi di [`VaultConfig`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#vaultconfig) con commenti descrittivi.
+`handle_init()` $\rightarrow$ Genera il template TOML standard basato sui campi di [`VaultConfig`](../architecture/models.md#vaultconfig) con commenti descrittivi.
 
 ### Codici di Uscita
 - `0 (SUCCESS)`: File generato con successo.
@@ -36,19 +39,22 @@ Esegue la suite diagnostica in 5 fasi del Second Brain, individua violazioni di 
 
 ### Sintassi
 ```bash
-sbk audit [--step {1,2,3,4,5}] [--json FILE] [--report-md FILE]
+sbk audit [--target PATH] [--step {1,2,3,4,5}] [-f {md,json,yaml}] [-o FILE] [--json FILE] [--report-md FILE]
 ```
+- `--target PATH`: Circoscrive l'analisi a un singolo file `.md` o a una sottocartella specifica.
 - `--step {1..5}`: Esegue esclusivamente la fase diagnostica indicata:
   - `1`: Storage & Filesystem (lunghezza percorsi, estensioni permesse, file pesanti).
   - `2`: Naming Conventions (conformità Title_Case).
   - `3`: Frontmatter & Types (blocco YAML, campi obbligatori, tipologia autorizzata).
   - `4`: Tag Taxonomy (verifica contro vocabolario controllato `00_Tassonomia_Tag.md`).
-  - `5`: Links & Attachments (wikilink rotti, embed orfani, collisioni di stem).
+  - `5`: Referential Integrity (wikilink rotti, embed orfani, collisioni di stem omonimi tra cartelle).
+- `-f, --format {md,json,yaml}`: Formato di output per la console (default: `md`).
+- `-o, --output FILE`: Esporta il referto a file (formato dedotto dall'estensione `.md`, `.json`, `.yaml`). L'opzione è cumulabile più volte per generare simultaneamente referti multipli.
 - `--json FILE`: Salva il referto diagnostico completo in formato JSON.
 - `--report-md FILE`: Salva un rapporto analitico formattato in Markdown per Obsidian.
 
 ### Interazione Architetturale
-`handle_audit()` $\rightarrow$ [`Vault.audit()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#auditphases-optionallistint--none---auditreport) $\rightarrow$ `run_audit()` in `audit.py` $\rightarrow$ Restituisce [`AuditReport`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#auditreport).
+`handle_audit()` $\rightarrow$ [`Vault.audit()`](../architecture/facade.md) $\rightarrow$ `run_audit()` in `audit.py` $\rightarrow$ Restituisce [`AuditReport`](../architecture/models.md#auditreport).
 
 ### Codici di Uscita
 - `0 (SUCCESS)`: Health Score pari a 100.0 e zero problematiche riscontrate.
@@ -56,42 +62,21 @@ sbk audit [--step {1,2,3,4,5}] [--json FILE] [--report-md FILE]
 
 ### Esempi
 ```bash
-# Esecuzione completa con output visivo a terminale
+# Esecuzione completa con output a terminale
 sbk audit
 
-# Esecuzione della sola fase 3 (Frontmatter) con export JSON
-sbk audit --step 3 --json /tmp/audit_frontmatter.json
+# Scansione circoscritta all'area progetti con export simultaneo in Markdown e JSON
+sbk audit --target 10-19_Progetti -o report.md -o report.json
+
+# Esecuzione della sola fase 3 (Frontmatter)
+sbk audit --step 3
 ```
 
 ---
 
-## 3. `sbk check-links`
+## 3. `sbk clean-attachments`
 
-Scansiona tutte le note Markdown (o una cartella specifica) per individuare wikilink (`[[...]]`) ed embed multimediali (`![[...] ]`) non risolvibili all'interno del Vault.
-
-### Sintassi
-```bash
-sbk check-links [--target PATH]
-```
-- `--target PATH`: Circoscrive l'analisi a un singolo file `.md` o a una sottocartella.
-
-### Interazione Architetturale
-`handle_links()` $\rightarrow$ [`Vault.check_links()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#check_linkstarget-optionalunionstr-path--none---listbrokenlink) $\rightarrow$ `scan_broken_links()` in `links.py` $\rightarrow$ Lista di [`BrokenLink`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#brokenlink).
-
-### Codici di Uscita
-- `0 (SUCCESS)`: Zero link rotti rilevati.
-- `2 (ISSUES_FOUND)`: Individuati uno o più collegamenti orfani.
-
-### Esempio
-```bash
-sbk check-links --target 20-29_Istruzione/
-```
-
----
-
-## 4. `sbk clean-attachments`
-
-Ispeziona le cartelle dedicate agli allegati (`_attachments`, `media`, ecc.) e bonifica i file binari che non risultano citati in alcuna nota del Vault.
+Ispeziona le cartelle dedicate agli allegati (`_attachments`, `media`, `90-99_Allegati`, ecc.) e bonifica i file binari che non risultano citati in alcuna nota del Vault.
 
 ### Sintassi
 ```bash
@@ -106,7 +91,8 @@ sbk clean-attachments [--target PATH] [--dry-run] [--hard-delete]
 flowchart LR
     Cmd["sbk clean-attachments"] --> Facade["Vault.clean_attachments()"]
     Facade --> Find["attachments.find_orphan_attachments()"]
-    Find --> Tx["TransactionContext (Journal)"]
+    Tx["TransactionContext (Journal)"]
+    Find --> Tx
     Tx --> ReversibleDelete["soft_delete (.trash) / hard_delete"]
     ReversibleDelete --> Log["ActionRecord salvato nel Journal"]
 ```
@@ -129,9 +115,9 @@ sbk clean-attachments
 
 ---
 
-## 5. `sbk normalize-names`
+## 4. `sbk normalize-names`
 
-Normalizza ricorsivamente tutti i nomi di file secondo la convenzione `Title_Case_Con_Underscore`, preservando i prefissi numerici Johnny.Decimal (es. `10-19_`) e gli acronimi protetti (`AI`, `CRM`, `BCG`). **Tutti i wikilink interni in ingresso vengono contestualmente aggiornati nell'intero Vault**.
+Normalizza ricorsivamente tutti i nomi di file secondo la convenzione `Title_Case_Con_Underscore`, preservando i prefissi numerici Johnny.Decimal (es. `10-19_`) e gli acronimi protetti (`AI`, `CRM`, `BCG`). **Tutti i wikilink interni in ingresso e gli indici MOC di cartella vengono contestualmente sincronizzati nell'intero Vault**.
 
 ### Sintassi
 ```bash
@@ -141,7 +127,7 @@ sbk normalize-names [--target DIR] [--dry-run]
 - `--dry-run`: Anteprima dettagliata dei file che verrebbero rinominati e del numero di backlink da aggiornare.
 
 ### Interazione Architetturale
-`handle_naming()` $\rightarrow$ [`Vault.normalize_names()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#normalize_namestargetnone-dry_runfalse---listtuplepath-path-int) $\rightarrow$ `batch_normalize()` in `naming.py` con registrazione automatica nel Journal.
+`handle_naming()` $\rightarrow$ [`Vault.normalize_names()`](../architecture/facade.md) $\rightarrow$ `batch_normalize()` in `naming.py` con registrazione automatica nel Journal.
 
 ### Reversibilità
 **Completamente reversibile tramite `sbk undo`**. L'undo ripristina sia i vecchi nomi sia tutti i wikilink riscritti.
@@ -153,7 +139,7 @@ sbk normalize-names --target 10-19_Progetti/ --dry-run
 
 ---
 
-## 6. `sbk generate-indices`
+## 5. `sbk generate-indices`
 
 Genera o risincronizza i file MOC (`00_Indice.md` o `00_Indice_<Cartella>.md`) aggregando le note per tipologia con abstract estratti da frontmatter, callout o primi paragrafi.
 
@@ -166,7 +152,7 @@ sbk generate-indices [--target DIR] [--all] [--dry-run]
 - `--dry-run`: Mostra il contenuto generato senza salvarlo su disco.
 
 ### Interazione Architetturale
-`handle_indices()` $\rightarrow$ [`Vault.generate_indices()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#generate_indicestargetnone-recursivetrue-dry_runfalse---listtuplepath-bool) $\rightarrow$ `IndexManager.rebuild_index()` in `indices.py`.
+`handle_indices()` $\rightarrow$ [`Vault.generate_indices()`](../architecture/facade.md) $\rightarrow$ `IndexManager.rebuild_index()` in `indices.py`.
 
 ### Esempio
 ```bash
@@ -175,7 +161,7 @@ sbk generate-indices --target 20-29_Istruzione/ --all
 
 ---
 
-## 7. `sbk frontmatter`
+## 6. `sbk frontmatter`
 
 Sottocomando per l'ispezione e la manipolazione controllata dei metadati YAML conformemente alla governance del Vault.
 
@@ -202,54 +188,36 @@ Sottocomando per l'ispezione e la manipolazione controllata dei metadati YAML co
    sbk frontmatter sanitize-tags [--target DIR] [--dry-run]
    ```
 
-I template JSON di riferimento per le operazioni batch sono disponibili in [`examples/batch/`](file:///home/lucadileo9/scripts/second-brain-keeper/examples/batch/).
+I template JSON di riferimento per le operazioni batch sono disponibili in [`examples/batch/`](../../examples/batch/).
 
 ### Reversibilità
 Tutte le modifiche al frontmatter sono incapsulate in transazioni e **reversibili tramite `sbk undo`**.
 
 ---
 
-## 8. `sbk disambiguate`
-
-Individua e segnala collisioni di stem tra cartelle diverse, che impedirebbero a Obsidian di risolvere in modo univoco i wikilink non qualificati da percorso.
-
-### Sintassi
-```bash
-sbk disambiguate [--target DIR] [--dry-run]
-```
-
-### Interazione Architetturale
-`handle_disambiguate()` $\rightarrow$ [`Vault.stem_collisions()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#stem_collisions---dictstr-listpath) $\rightarrow$ `find_stem_collisions()` in `links.py`.
-
-### Esempio
-```bash
-sbk disambiguate
-```
-
----
-
-## 9. `sbk history`
+## 7. `sbk history`
 
 Interroga lo storico delle transazioni atomiche registrate nel Journal in `.sbk/history/*.json.gz`.
 
 ### Sintassi
 ```bash
-sbk history [--limit N] [--format {md,json,yaml,csv}]
+sbk history [--limit N] [--format {md,json,yaml,csv}] [-o FILE]
 ```
 - `--limit N`: Numero massimo di transazioni da estrarre (default: 20).
-- `--format`: Formato di rendering tabellare o serializzato.
+- `--format`: Formato di rendering tabellare o serializzato (default: `md`).
+- `-o, --output FILE`: Esporta la cronologia su uno o più file (cumulabile).
 
 ### Interazione Architetturale
-`handle_history()` $\rightarrow$ [`Vault.history()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#historylimit-int--20---listtransactionrecord) $\rightarrow$ `TransactionJournal.list_transactions()`.
+`handle_history()` $\rightarrow$ [`Vault.history()`](../architecture/facade.md) $\rightarrow$ `TransactionJournal.list_transactions()`.
 
 ### Esempio
 ```bash
-sbk history --limit 5 --format md
+sbk history --limit 10 --format md -o cronologia.md
 ```
 
 ---
 
-## 10. `sbk undo`
+## 8. `sbk undo`
 
 Annulla una transazione completata ripristinando integralmente lo stato del filesystem e del contenuto testuale, previa verifica crittografica SHA-256 anti-conflitto.
 
@@ -265,7 +233,8 @@ sbk undo [--tx ID_TRANSAZIONE] [--dry-run]
 flowchart TD
     Cmd["sbk undo [--tx ID]"] --> Facade["Vault.undo()"]
     Facade --> Journal["TransactionJournal.undo()"]
-    Journal --> Preflight{"Verifica SHA-256<br/>anti-conflitto"}
+    Preflight{"Verifica SHA-256<br/>anti-conflitto"}
+    Journal --> Preflight
     Preflight -- Conflitto --> Abort["UndoConflictError (nessun ripristino)"]
     Preflight -- Integro --> Revert["Inversione LIFO delle micro-azioni"]
     Revert --> Refresh["Vault.refresh() (invalida catalogo)"]
@@ -282,7 +251,32 @@ sbk undo
 
 ---
 
-## 11. `sbk rename`
+## 9. `sbk redo`
+
+Riapplica l'ultima transazione annullata tramite `sbk undo` (o una specifica transazione indicata tramite `--tx`), ripristinando le modifiche precedentemente disfattesi.
+
+### Sintassi
+```bash
+sbk redo [--tx ID_TRANSAZIONE] [--dry-run]
+```
+- `--tx ID_TRANSAZIONE`: Identificativo specifico della transazione revertita da riapplicare. Se omesso, riapplica **l'ultima transazione revertita**.
+- `--dry-run`: Verifica la fattibilità della riapplicazione senza modificare i file.
+
+### Interazione Architetturale
+`handle_redo()` $\rightarrow$ [`Vault.redo()`](../architecture/facade.md) $\rightarrow$ `TransactionJournal.redo()`.
+
+### Esempio
+```bash
+# Anteprima della riapplicazione
+sbk redo --dry-run
+
+# Riapplicazione effettiva
+sbk redo
+```
+
+---
+
+## 10. `sbk rename`
 
 Rinomina un file o un appunto Markdown garantendo la normalizzazione dello stem, il pre-flight check sulle collisioni, l'aggiornamento simultaneo di tutti i wikilink in ingresso nel Vault e la sincronizzazione del MOC di cartella. Supporta sia la rinomina singola che l'elaborazione batch atomica da mapping JSON.
 
@@ -301,9 +295,9 @@ sbk rename --batch mapping.json [--skip-links] [--dry-run]
 - `--dry-run`: Simula l'operazione visualizzando i link che verrebbero aggiornati.
 
 ### Interazione Architetturale
-`handle_rename()` $\rightarrow$ [`Vault.rename()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#renameold_path-new_name-skip_linksfalse-dry_runfalse---renameresult) o [`Vault.batch_rename()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#batch_renamemapping-skip_linksfalse-dry_runfalse---listrenameresult).
+`handle_rename()` $\rightarrow$ [`Vault.rename()`](../architecture/facade.md) o [`Vault.batch_rename()`](../architecture/facade.md).
 
-### Esempio
+### Esempi
 ```bash
 # Singola nota
 sbk rename 10-19_Progetti/vecchio_progetto.md Progetto_Varys --dry-run
@@ -314,7 +308,7 @@ sbk rename --batch examples/batch/batch_rename_template.json
 
 ---
 
-## 12. `sbk move`
+## 11. `sbk move`
 
 Sposta una o più note in una directory decimale differente, aggiornando sia l'indice MOC della cartella di origine che quello della cartella di arrivo. Supporta sia lo spostamento singolo che l'elaborazione batch atomica da mapping JSON con validazione Strict All-or-Nothing.
 
@@ -334,10 +328,10 @@ sbk move --batch mapping.json [--dry-run]
 ### Reversibilità
 **Reversibile al 100% con un singolo `sbk undo`** sia per operazioni singole che batch.
 
-### Esempio
+### Esempi
 ```bash
 # Singolo file
-sbk move 20-29_Istruzione/Architettura.md 10-19_Progetti/
+sbk move 00_Inbox/Architettura.md 10-19_Progetti/
 
 # Batch da file JSON
 sbk move --batch examples/batch/batch_move_template.json
@@ -345,7 +339,7 @@ sbk move --batch examples/batch/batch_move_template.json
 
 ---
 
-## 13. `sbk archive`
+## 12. `sbk archive`
 
 Trasferisce un progetto o una risorsa conclusa verso il Cold Storage (`/srv/storage/Archive`). Crea opzionalmente una scheda tombstone nel Vault originario contenente un estratto sintetico e un puntamento storico all'archivio.
 
@@ -358,7 +352,7 @@ sbk archive BERSAGLIO [--no-tombstone] [--dry-run]
 - `--dry-run`: Simula l'archiviazione senza muovere file.
 
 ### Interazione Architetturale
-`handle_archive()` $\rightarrow$ [`Vault.archive()`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/facade.md#archiveitem_path-no_tombstonefalse-dry_runfalse---archiveresult) $\rightarrow$ Restituisce [`ArchiveResult`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#archiveresult).
+`handle_archive()` $\rightarrow$ [`Vault.archive()`](../architecture/facade.md) $\rightarrow$ Restituisce [`ArchiveResult`](../architecture/models.md#archiveresult).
 
 ### Esempio
 ```bash
@@ -367,7 +361,7 @@ sbk archive 10-19_Progetti/Progetto_Legacy/
 
 ---
 
-## 14. `sbk offload`
+## 13. `sbk offload`
 
 Identifica file binari pesanti (>50MB o target specificato), li sposta nell'archivio a freddo e sostituisce i riferimenti inline con schede di puntamento esterno per alleggerire il Vault.
 
@@ -385,14 +379,14 @@ sbk offload --dry-run
 
 ---
 
-## 15. `sbk tags`
+## 14. `sbk tags`
 
 Gestisce il vocabolario controllato della tassonomia memorizzato in `00_Tassonomia_Tag.md`.
 
 ### Sottocomandi
 1. **`show`**: Visualizza i tag censiti, filtrabili per stringa di ricerca.
    ```bash
-   sbk tags show [--query RICERCA] [--format {md,json,yaml,csv}]
+   sbk tags show [--query RICERCA] [--format {md,json,yaml,csv}] [-o FILE]
    ```
 2. **`add`**: Inserisce un nuovo tag in ordine alfabetico sotto la sezione desiderata.
    ```bash
@@ -406,7 +400,7 @@ Gestisce il vocabolario controllato della tassonomia memorizzato in `00_Tassonom
 
 ---
 
-## 16. `sbk config`
+## 15. `sbk config`
 
 Ispeziona o aggiorna a caldo le direttive del file di configurazione `vault.toml`.
 
@@ -422,53 +416,55 @@ Ispeziona o aggiorna a caldo le direttive del file di configurazione `vault.toml
 
 ---
 
-## 17. `sbk search`
+## 16. `sbk search`
 
-Motore di ricerca full-text combinatorio e semantico su tutto il Vault.
+Motore di ricerca full-text combinatorio e semantico su tutto il Vault con supporto multi-export.
 
 ### Sintassi
 ```bash
-sbk search [QUERY] [--tag TAG] [--type TIPO] [--links-to STEM] [--folder CARTELLA] [--format {md,json,yaml,csv}]
+sbk search [QUERY] [--tag TAG] [--type TIPO] [--links-to STEM] [--folder CARTELLA] [--format {md,json,yaml,csv}] [-o FILE]
 ```
 - `QUERY`: Termine testuale da cercare nel titolo o corpo delle note.
 - `--tag`: Filtro per tag (es. `tech/python`).
 - `--type`: Filtro per tipologia di nota (es. `Appunto`, `Progetto`).
 - `--links-to`: Filtro per note che citano lo stem specificato (ricerca backlink).
 - `--folder`: Circoscrive la ricerca a una specifica cartella decimale.
+- `-o, --output FILE`: Esporta i risultati della ricerca su uno o più file.
 
 ### Esempio
 ```bash
-# Ricerca combinata: note di tipo Progetto con tag 'ai' collegate a 'ThinkStation'
-sbk search --type Progetto --tag ai --links-to ThinkStation
+# Ricerca combinata con export
+sbk search --type Progetto --tag ai --links-to ThinkStation -o risultati.json
 ```
 
 ---
 
-## 18. `sbk graph-health`
+## 17. `sbk graph-health`
 
 Esegue l'analisi topologica della rete dei concetti di Obsidian, identificando note centrali (*hubs*), vicoli ciechi (*dead-ends*), note completamente isolate (*true orphans*) e componenti sconnesse.
 
 ### Sintassi
 ```bash
-sbk graph-health [--format {md,json,yaml}]
+sbk graph-health [--format {md,json,yaml}] [-o FILE]
 ```
+- `-o, --output FILE`: Esporta il referto topologico su uno o più file.
 
 ### Esempio
 ```bash
-sbk graph-health --format md
+sbk graph-health --format md -o 00-09_Meta/Grafo_Diagnostica.md
 ```
 
 ---
 
-## 19. `sbk map`
+## 18. `sbk map`
 
 Genera la cartografia quantitativa dell'albero decimale Johnny.Decimal (conteggio note, allegati, megabyte occupati e verifica presenza dei MOC `00_Indice.md`).
 
 ### Sintassi
 ```bash
-sbk map [--output MAPPA.md] [--format {md,json}]
+sbk map [--format {md,json,yaml}] [-o FILE]
 ```
-- `--output MAPPA.md`: Salva la mappa in un appunto Markdown conforme al Vault.
+- `-o, --output FILE`: Salva la mappa in uno o più file (es. appunto Markdown conforme al Vault).
 
 ### Esempio
 ```bash
@@ -477,9 +473,9 @@ sbk map --output 00-09_Meta/Mappa_Vault.md
 
 ---
 
-## 20. `sbk create`
+## 19. `sbk create`
 
-Crea una nuova nota standardizzata applicando validazione preventiva, risoluzione del template appropriato, auto-routing Johnny.Decimal e inserimento automatico nel MOC di cartella.
+Crea una nuova nota standardizzata applicando validazione preventiva dei metadati, risoluzione del template appropriato, deposito nella cartella specificata (o nella cartella di staging configurata, default `00_Inbox`) e inserimento automatico nel MOC di cartella.
 
 ### Sintassi
 ```bash
@@ -487,10 +483,11 @@ sbk create TITOLO --type TIPO [--folder CARTELLA] [--tags TAGS] [--template TEMP
 ```
 - `TITOLO`: Titolo discorsivo dell'appunto (es. `"Architettura Microservizi"`).
 - `--type TIPO`: Tipologia obbligatoria (`Appunto`, `Progetto`, `Contatto`, `Risorsa`, `Sistema`).
-- `--folder CARTELLA`: Cartella esplicita. Se omessa, applica l'**auto-routing Johnny.Decimal** (`Progetto` $\rightarrow$ `10-19_Progetti`, `Contatto` $\rightarrow$ `30-39_Carriera/32_CRM`, ecc.).
+- `--folder CARTELLA`: Cartella esplicita di destinazione (es. `10-19_Progetti`). Se omessa, la nota viene depositata nell'area di staging (`00_Inbox` o valore impostato in `inbox_folder` nel file `vault.toml`), pronta per essere revisionata o successivamente smistata.
 - `--tags TAGS`: Tag separati da virgola (validati preventivamente contro la tassonomia se `strict_taxonomy=True`).
 - `--template TEMPLATE`: Nome o percorso di un template personalizzato. Se omesso, seleziona il template predefinito per la tipologia.
 - `--dry-run`: Simula la generazione senza scrivere il file né aggiornare l'indice.
+- `--format`: Formato di output (`md`, `json`, `yaml`, `csv`).
 
 ### Flusso Operativo
 ```mermaid
@@ -506,7 +503,7 @@ sequenceDiagram
 
     Utente->>Facade: create(title, tipo, tags, ...)
     Facade->>Check: Valida tipo, tag e collisione stem
-    Facade->>Route: Calcola cartella Johnny.Decimal
+    Facade->>Route: Risolve cartella esplicita o inbox_folder (00_Inbox)
     Facade->>Tmpl: Risolve template e inietta variabili
     Facade->>Tx: begin_transaction("create")
     Tx->>Tx: Scrittura file .md
@@ -520,9 +517,42 @@ sequenceDiagram
 
 ### Esempi
 ```bash
-# Creazione standard con auto-routing in 20-29_Istruzione/
+# Creazione standard con deposito in staging (00_Inbox)
 sbk create "Algoritmi di Consenso Paxos" --type Appunto --tags "tech/distributed,uni/sistemi"
 
-# Creazione contatto CRM con auto-routing in 30-39_Carriera/32_CRM/
-sbk create "Mario Rossi" --type Contatto --tags "network/consulenza"
+# Creazione esplicita nella cartella di competenza
+sbk create "Integrazione Gateway" --type Progetto --folder "10-19_Progetti"
+```
+
+---
+
+## 20. `sbk sandbox`
+
+Gestisce un ambiente di simulazione e collaudo completamente isolato per eseguire test e verifiche in sicurezza, senza toccare il Vault di produzione. Per un tutorial guidato passo-passo, consultare la [Guida alla Sandbox](sandbox_guide.md).
+
+### Sottocomandi
+1. **`init`**: Inizializza un nuovo vault sandbox completo di gerarchia Johnny.Decimal, note di prova con wikilink e `vault.toml`.
+   ```bash
+   sbk sandbox init [--target DIR] [--force]
+   ```
+2. **`path`**: Stampa a terminale il percorso assoluto della sandbox attiva.
+   ```bash
+   sbk sandbox path [--target DIR]
+   ```
+3. **`reset`**: Ripristina istantaneamente la sandbox allo stato vergine di fabbrica.
+   ```bash
+   sbk sandbox reset [--target DIR]
+   ```
+
+### Esempio
+```bash
+# Inizializza la sandbox e imposta l'ambiente
+sbk sandbox init --force
+export SBK_VAULT=$(sbk sandbox path)
+
+# Esegui comandi in totale sicurezza
+sbk --root "$SBK_VAULT" audit
+sbk --root "$SBK_VAULT" create "Test Note" --type Appunto
+sbk --root "$SBK_VAULT" undo
+sbk sandbox reset
 ```
