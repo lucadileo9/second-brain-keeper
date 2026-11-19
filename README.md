@@ -41,6 +41,15 @@ pip install -e ".[dev]"
 
 ## Primi Passi (Quickstart)
 
+> [!TIP] Ambiente di Prova Protetto (Sandbox)
+> Per familiarizzare con VaultKeeper senza toccare il Vault reale, è disponibile la modalità sandbox:
+> ```bash
+> sbk sandbox init
+> export SBK_VAULT=$(sbk sandbox path)
+> sbk --root "$SBK_VAULT" audit
+> ```
+> Per la guida completa ed esempi passo-passo, consultare la [**Guida alla Sandbox**](docs/cli/sandbox_guide.md).
+
 ### 1. Inizializzare la Configurazione del Vault
 ```bash
 sbk init --target /srv/storage/Vault
@@ -51,13 +60,13 @@ Genera il file guida `vault.toml` con le convenzioni di denominazione (`Title_Ca
 ```bash
 sbk audit
 ```
-Verifica filesystem, denominazione, conformità frontmatter YAML, tassonomia controllata dei tag e integrità dei wikilink, calcolando il **Vault Health Score** (da 0.0 a 100.0).
+Verifica filesystem, denominazione, conformità frontmatter YAML, tassonomia controllata dei tag e integrità dei wikilink (inclusi link rotti ed embed orfani), calcolando il **Vault Health Score** (da 0.0 a 100.0).
 
 ### 3. Creare una Nuova Nota Standardizzata
 ```bash
 sbk create "Architettura a Microservizi" --type Appunto --tags "tech/architettura,tech/cloud"
 ```
-Applica automaticamente l'auto-routing Johnny.Decimal verso la cartella corretta (`20-29_Istruzione/`), inietta le variabili nel template e aggiorna il MOC `00_Indice.md`.
+Deposita la nota nell'area di staging (`00_Inbox/Architettura_A_Microservizi.md` o cartella specificata con `--folder`), inietta le variabili nel template e aggiorna il MOC `00_Indice.md`.
 
 ### 4. Rinominare con Refactoring Globale dei Backlink
 ```bash
@@ -65,11 +74,14 @@ sbk rename 10-19_Progetti/vecchio_progetto.md Progetto_Varys
 ```
 Rinomina il file e aggiorna simultaneamente tutti i collegamenti `[[...]]` che puntavano al vecchio nome all'interno dell'intero Vault.
 
-### 5. Annullare un'Operazione Involontaria
+### 5. Annullare o Riapplicare un'Operazione
 ```bash
+# Annulla l'ultima transazione con verifica di sicurezza crittografica SHA-256
 sbk undo
+
+# Riapplica l'operazione annullata
+sbk redo
 ```
-Esegue un controllo di sicurezza crittografico SHA-256 (rifiuta il rollback se i file sono stati modificati nel frattempo da terzi) e ripristina lo stato precedente in ordine inverso.
 
 ---
 
@@ -80,15 +92,14 @@ Per la consultazione dettagliata di argomenti, opzioni ed esempi d'uso per ciasc
 | Comando | Sintassi di Esempio | Descrizione Operativa | Reversibile con `undo` |
 | :--- | :--- | :--- | :---: |
 | **`init`** | `sbk init [--force]` | Genera il file di configurazione predefinito `vault.toml`. | No |
-| **`audit`** | `sbk audit [--step 1..5] [--json out.json]` | Diagnostica a 5 fasi con calcolo del Vault Health Score. | No (Read-Only) |
-| **`check-links`** | `sbk check-links [--target <path>]` | Rileva wikilink rotti ed embed multimediali orfani. | No (Read-Only) |
+| **`audit`** | `sbk audit [--target <path>] [--step 1..5] [-o report.md]` | Diagnostica a 5 fasi con calcolo del Vault Health Score. | No (Read-Only) |
 | **`clean-attachments`** | `sbk clean-attachments [--dry-run]` | Bonifica file orfani tramite soft-delete reversibile in `.trash/`. | **Sì** |
 | **`normalize-names`** | `sbk normalize-names [--dry-run]` | Converte in `Title_Case` e riscrive contestualmente i backlink. | **Sì** |
 | **`generate-indices`** | `sbk generate-indices [--all] [--dry-run]` | Genera o aggiorna i file MOC `00_Indice.md` di cartella. | No (Idempotente) |
 | **`frontmatter`** | `sbk frontmatter set-type --target n.md --type Appunto` | Ispeziona o modifica metadati YAML (`tipo`, tag). | **Sì** |
-| **`disambiguate`** | `sbk disambiguate [--target <dir>]` | Rileva collisioni di stem omonimi tra cartelle diverse. | No (Read-Only) |
-| **`history`** | `sbk history [--limit 20] [--format json]` | Mostra lo storico delle transazioni atomiche del Journal. | No (Read-Only) |
+| **`history`** | `sbk history [--limit 20] [--format json] [-o FILE]` | Mostra lo storico delle transazioni atomiche del Journal. | No (Read-Only) |
 | **`undo`** | `sbk undo [--tx <id>] [--dry-run]` | Ripristina lo stato del filesystem precedente con verifica SHA-256. | **Sì** (Rollback) |
+| **`redo`** | `sbk redo [--tx <id>] [--dry-run]` | Riapplica l'ultima transazione annullata tramite `undo`. | **Sì** (Reapply) |
 | **`rename`** | `sbk rename vecchio.md Nuovo.md` | Rinomina una nota con sincronizzazione globale di backlink e MOC. | **Sì** |
 | **`move`** | `sbk move nota.md 10-19_Progetti/` | Sposta file o cartelle aggiornando entrambi i MOC di area. | **Sì** |
 | **`archive`** | `sbk archive Progetto_X/ [--no-tombstone]` | Trasferisce in cold storage e deposita scheda tombstone. | **Sì** |
@@ -96,9 +107,10 @@ Per la consultazione dettagliata di argomenti, opzioni ed esempi d'uso per ciasc
 | **`tags`** | `sbk tags add tech/rust [--section "Tecnologia"]` | Gestisce il vocabolario controllato `00_Tassonomia_Tag.md`. | **Sì** |
 | **`config`** | `sbk config set naming_style Title_Case` | Ispeziona o modifica impostazioni a caldo in `vault.toml`. | **Sì** |
 | **`search`** | `sbk search "query" [--tag t] [--type Appunto]` | Ricerca full-text e filtri combinatori multi-criterio. | No (Read-Only) |
-| **`graph-health`** | `sbk graph-health [--format md]` | Analisi topologica del grafo (top hubs, dead-ends, orfani). | No (Read-Only) |
+| **`graph-health`** | `sbk graph-health [--format md] [-o FILE]` | Analisi topologica del grafo (top hubs, dead-ends, orfani). | No (Read-Only) |
 | **`map`** | `sbk map [--output Mappa.md] [--format json]` | Cartografia strutturale Johnny.Decimal e volumi del Vault. | No (Read-Only) |
-| **`create`** | `sbk create "Titolo" --type Appunto [--tags ...]` | Creazione standardizzata con auto-routing, template e MOC. | **Sì** |
+| **`create`** | `sbk create "Titolo" --type Appunto [--folder ...]` | Creazione standardizzata con staging inbox, template e MOC. | **Sì** |
+| **`sandbox`** | `sbk sandbox {init,reset,path}` | Gestisce ambienti di test isolati (v. [guida](docs/cli/sandbox_guide.md)). | No (Isolato) |
 
 ---
 
@@ -173,16 +185,17 @@ docs/
 │   └── transaction_journal.md # Meccanica dello stato, hashing SHA-256 e rollback LIFO
 ├── cli/
 │   ├── overview.md            # Panoramica CLI, exit codes, opzioni globali e dry-run
-│   └── commands_reference.md  # Specifiche esaustive e parametri per tutti i 20 comandi
+│   ├── commands_reference.md  # Specifiche esaustive e parametri per tutti i 20 comandi
+│   └── sandbox_guide.md       # Guida interattiva e walkthrough per testare nella sandbox
 └── testing/
-    └── test_suite.md          # 153 test, copertura 90%, fixture isolate e matrici CI
+    └── test_suite.md          # 184 test, copertura >=90%, fixture isolate e matrici CI
 ```
 
 ---
 
 ## Qualità e Suite di Test
 
-- **Test Suite**: 166 test automatizzati eseguiti in meno di 0.9s.
+- **Test Suite**: 184 test automatizzati eseguiti in meno di 0.8s.
 - **Copertura del Codice**: $\ge 90\%$ complessivo misurato con `pytest-cov`.
 - **Controllo Tipi Statico**: 100% conforme a `mypy --strict` su 79 file sorgente.
 - **Stile & Linting**: 100% conforme alle regole di `ruff check` e `ruff format`.
