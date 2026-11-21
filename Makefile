@@ -6,17 +6,19 @@ ifeq ($(wildcard $(VENV)/bin/python3),)
     RUFF ?= ruff
     MYPY ?= mypy
     TOX ?= tox
+    PRE_COMMIT ?= pre-commit
 else
     PYTHON ?= $(VENV)/bin/python3
     RUFF ?= $(VENV)/bin/ruff
     MYPY ?= $(VENV)/bin/mypy
     TOX ?= $(if $(wildcard $(VENV)/bin/tox),$(VENV)/bin/tox,tox)
+    PRE_COMMIT ?= $(if $(wildcard $(VENV)/bin/pre-commit),$(VENV)/bin/pre-commit,pre-commit)
 endif
 
 PIP = $(PYTHON) -m pip
 PYTEST = $(PYTHON) -m pytest
 
-.PHONY: help install install-dev test lint format typecheck all build clean tox
+.PHONY: help install install-dev test lint format typecheck pre-commit all build clean tox
 
 help:
 	@echo "Disponibili i seguenti comandi:"
@@ -26,6 +28,7 @@ help:
 	@echo "  lint         : Controlla lo stile del codice (Ruff check & format check)"
 	@echo "  format       : Formatta il codice (Ruff format e autofix)"
 	@echo "  typecheck    : Controlla i tipi statici (Mypy)"
+	@echo "  pre-commit   : Esegue tutti gli hook di pre-commit sui file"
 	@echo "  tox          : Esegue i test su ambienti multipli isolati"
 	@echo "  all          : Esegue format, lint, typecheck e test"
 	@echo "  build        : Crea i file per la distribuzione (wheel/sdist)"
@@ -50,6 +53,9 @@ format:
 
 typecheck:
 	$(MYPY) src/sbk/
+
+pre-commit:
+	$(PRE_COMMIT) run --all-files
 
 tox:
 	$(TOX)

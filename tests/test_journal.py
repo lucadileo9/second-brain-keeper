@@ -301,7 +301,9 @@ def test_redo_restores_undone_transaction(mock_vault: Path) -> None:
     assert redo_res.success
     assert redo_res.reapplied_actions == 1
     assert target.read_text(encoding="utf-8") == new_content
-    assert not journal.get_transaction(tx_id).reverted
+    tx_rec = journal.get_transaction(tx_id)
+    assert tx_rec is not None
+    assert not tx_rec.reverted
 
 
 def test_redo_conflict_detection(mock_vault: Path) -> None:

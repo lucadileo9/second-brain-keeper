@@ -1,6 +1,6 @@
 # Manuale di Riferimento dei Comandi CLI (`sbk` / `vk`)
 
-Questo documento fornisce la specifica tecnica completa per ciascuno dei **20 comandi** esposti dalla CLI di `second-brain-keeper`. 
+Questo documento fornisce la specifica tecnica completa per ciascuno dei **20 comandi** esposti dalla CLI di `second-brain-keeper`.
 Per ciascun comando sono descritti: la finalità operativa, la sintassi completa, l'interazione con le classi interne del sistema, i codici di uscita ed esempi pratici di utilizzo.
 
 > [!NOTE] Diagnostica Consolidata

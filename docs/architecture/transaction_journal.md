@@ -1,6 +1,6 @@
 # Architettura del Transaction Journal e Rollback Engine
 
-Il modulo [`src/sbk/core/journal.py`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/core/journal.py) implementa il motore transazionale di `second-brain-keeper`. 
+Il modulo [`src/sbk/core/journal.py`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/core/journal.py) implementa il motore transazionale di `second-brain-keeper`.
 Il suo obiettivo è fornire garanzie di affidabilità di tipo **ACID-like** (Atomicità, Consistenza, Isolamento logico, Durabilità) su normali file system (ext4, NTFS, APFS), senza richiedere l'installazione di database esterni come SQLite o PostgreSQL.
 
 Ogni singola operazione di mutazione (creazione, rinomina, spostamento, archiviazione, offload, alterazione frontmatter, modifica tag) è gestita come una transazione atomica reversibile.
@@ -28,7 +28,7 @@ La manipolazione di un Second Brain di oltre 3.900 note comporta rischi sistemic
 stateDiagram-v2
     [*] --> Inizializzazione: begin_transaction(command, desc)
     Inizializzazione --> InCorso: __enter__() genera tx_id
-    
+
     state InCorso {
         [*] --> EsecuzioneAzione
         EsecuzioneAzione --> RegistrazioneAzione: Calcolo SHA-256 pre/post
@@ -37,7 +37,7 @@ stateDiagram-v2
 
     InCorso --> Commit: __exit__() senza eccezioni
     InCorso --> InFlightRollback: Eccezione sollevata nel blocco
-    
+
     InFlightRollback --> Fallita: Ripristino azioni in ordine inverso
     Fallita --> [*]: Propaga eccezione al chiamante
 
@@ -129,7 +129,7 @@ Scansiona `.sbk/history/*.json.gz`, decomprime e deserializza i record, ordinand
 Carica e restituisce il record completo per uno specifico identificativo transazione.
 
 ##### `undo(tx_id: Optional[str] = None, dry_run: bool = False) -> UndoResult`
-Annulla una transazione completata. 
+Annulla una transazione completata.
 Se `tx_id` non è specificato, individua automaticamente **la più recente transazione attiva non ancora revertita**.
 
 ##### `redo(tx_id: Optional[str] = None, dry_run: bool = False) -> RedoResult`
@@ -148,11 +148,11 @@ flowchart TD
     FindTx --> CheckReverted{"Gia revertita?"}
     CheckReverted -- Si --> ErrAlreadyReverted["Solleva UndoError"]
     CheckReverted -- No --> PreFlightLoop["Fase 1: Pre-flight Integrity Check"]
-    
+
     subgraph PreFlightCheck ["Verifica Integrita"]
         PreFlightLoop --> InspectAction["Ispezione ActionRecord"]
         InspectAction --> ActionType{"Tipo Azione"}
-        
+
         ActionType -- "write_content / create_file" --> CheckExists{"File esiste su disco?"}
         CheckExists -- No --> ErrMissing["Solleva UndoConflictError"]
         CheckExists -- Si --> ComputeCurrentHash["Calcolo SHA-256 attuale"]
@@ -165,7 +165,7 @@ flowchart TD
         CheckDestExists -- Si --> CheckOrigOccupied{"Posizione originale libera?"}
         CheckOrigOccupied -- Occupata --> ErrCollision["Solleva UndoConflictError"]
         CheckOrigOccupied -- Libera --> NextAction
-        
+
         NextAction --> MoreActions{"Altre azioni?"}
         MoreActions -- Si --> InspectAction
     end

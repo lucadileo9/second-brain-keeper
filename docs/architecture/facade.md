@@ -34,7 +34,7 @@ flowchart TD
     FACADE --> JOURNAL["TransactionJournal (journal.py)"]
     FACADE --> CATALOG["Traversal & Catalog (traversal.py)"]
     FACADE --> CORE["Core Modules (14 moduli specializzati)"]
-    
+
     subgraph Core Modules
         CORE --> AUD["audit.py"]
         CORE --> LIF["lifecycle.py"]
@@ -71,7 +71,7 @@ sequenceDiagram
     Vault->>Journal: begin_transaction("rename", desc)
     activate Journal
     Journal-->>Vault: tx (Transaction)
-    
+
     Vault->>Core: rename_item(catalog, config, ..., transaction=tx)
     activate Core
     Core->>FS: Calcolo SHA-256 pre-mutazione
@@ -109,7 +109,7 @@ sequenceDiagram
         Journal-->>Vault: UndoResult(success=True)
     end
     deactivate Journal
-    
+
     opt success == True
         Vault->>Vault: refresh()
     end

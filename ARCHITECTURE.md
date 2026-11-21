@@ -6,7 +6,7 @@ Questo documento definisce i principi architetturali, i pattern di progettazione
 
 ## 1. Visione d'Insieme & Filosofia Architetturale
 
-`second-brain-keeper` è un motore di governance per archivi documentali basati su Markdown e Second Brain Obsidian. 
+`second-brain-keeper` è un motore di governance per archivi documentali basati su Markdown e Second Brain Obsidian.
 È ingegnerizzato secondo una **Layered Architecture** a quattro livelli con dipendenze rigorosamente monodirezionali:
 
 ```mermaid
@@ -62,7 +62,7 @@ Tutte le mutazioni su filesystem (creazione, rinomina, spostamento, archiviazion
 - In fase di `sbk undo`, un controllo pre-flight verifica che nessun file sia stato modificato esternamente (anti-conflitto), prima di disfare le micro-azioni in ordine strettamente inverso (**LIFO**).
 
 ### D. Indicizzazione $O(1)$ in Memoria (`VaultCatalog`)
-Per evitare accessi ricorsivi ripetuti a disco durante l'esecuzione di comandi complessi (es. riscrittura globale dei wikilink o audit), [`VaultCatalog`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#vaultcatalog) mappa in memoria tutti gli stem normalizzati, nomi file e percorsi. 
+Per evitare accessi ricorsivi ripetuti a disco durante l'esecuzione di comandi complessi (es. riscrittura globale dei wikilink o audit), [`VaultCatalog`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md#vaultcatalog) mappa in memoria tutti gli stem normalizzati, nomi file e percorsi.
 Qualsiasi operazione mutativa invoca automaticamente `Vault.refresh()`, invalidando la cache in modo trasparente.
 
 ### E. Rigida Separazione dei Modelli di Dominio ([`models.md`](file:///home/lucadileo9/scripts/second-brain-keeper/docs/architecture/models.md))

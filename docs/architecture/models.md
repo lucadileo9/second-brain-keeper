@@ -1,6 +1,6 @@
 # Modelli di Dominio (Domain Models)
 
-Il package `sbk.models` definisce le strutture dati immutabili e fortemente tipizzate impiegate dall'intero ecosistema di `second-brain-keeper`. 
+Il package `sbk.models` definisce le strutture dati immutabili e fortemente tipizzate impiegate dall'intero ecosistema di `second-brain-keeper`.
 La separazione dei modelli dal motore computazionale garantisce che la logica di dominio e il presentation layer scambino contratti deterministici, serializzabili e privi di effetti collaterali.
 
 Tutti i 23 modelli sono organizzati in 5 moduli specializzati e riesportati collettivamente attraverso `sbk.models.__init__`.
