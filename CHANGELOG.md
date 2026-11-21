@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-11-21
+
+### Added
+- **Search Word Boundary Matching (`-w`, `--word`)**: Added whole-word matching support to `sbk search` (CLI) and `Vault.search(..., word_match=True)` / `SearchEngine.search(...)`. Prevents false positive substring matches on short acronyms (e.g., matching `AI`, `DB`, `OS` without capturing `email`, `certain`, `costi`, `dispositivo`). Underscores in note stems and tags are dynamically normalized to whitespace for word boundary evaluation.
+- **Sequence Protocol on `SearchResult`**: Implemented `__len__`, `__iter__`, `__getitem__` (with typing `@overload` for integer indexing and slice support), `__bool__`, and `__contains__` on `SearchResult`. Enables direct pythonic operations (`len(res)`, `for item in res:`, `res[0]`, `if res:`) without accessing `.items`.
+
+### Fixed
+- **Relative Target Path Resolution**: Corrected path resolution for `--target` across CLI and SDK (`audit`, `traversal`, `naming`, `frontmatter`, `vault.py`). Relative target paths are now deterministically anchored against the vault root (`config.root_path`) rather than the caller's current working directory (`CWD`).
+
 ## [2.1.0] - 2026-11-21
 
 ### Added
