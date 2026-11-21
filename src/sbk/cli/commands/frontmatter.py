@@ -1,5 +1,7 @@
 """Implementation of 'sbk frontmatter' subcommands."""
 
+from __future__ import annotations
+
 import logging
 from argparse import Namespace
 from pathlib import Path
@@ -10,6 +12,7 @@ from ...core.frontmatter import (
 )
 from ...core.traversal import walk_vault_files
 from ...exceptions import FrontmatterError, VaultKeeperError
+from ...vault import Vault
 from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
@@ -36,7 +39,7 @@ def handle_frontmatter(args: Namespace, logger: logging.Logger) -> int:
         return EXIT_ERROR
 
 
-def handle_set_type(args: Namespace, logger: logging.Logger, v: Any) -> int:
+def handle_set_type(args: Namespace, logger: logging.Logger, v: Vault) -> int:
     """Set or update the tipo YAML frontmatter field."""
     batch_arg = getattr(args, "batch", None)
     target = getattr(args, "target", None)
@@ -89,7 +92,7 @@ def handle_set_type(args: Namespace, logger: logging.Logger, v: Any) -> int:
     return EXIT_SUCCESS
 
 
-def handle_add_tags(args: Namespace, logger: logging.Logger, v: Any) -> int:
+def handle_add_tags(args: Namespace, logger: logging.Logger, v: Vault) -> int:
     """Inject or overwrite tags in a note's frontmatter."""
     batch_arg = getattr(args, "batch", None)
     target = getattr(args, "target", None)
@@ -141,7 +144,7 @@ def handle_add_tags(args: Namespace, logger: logging.Logger, v: Any) -> int:
     return EXIT_SUCCESS
 
 
-def handle_sanitize_tags(args: Namespace, logger: logging.Logger, v: Any) -> int:
+def handle_sanitize_tags(args: Namespace, logger: logging.Logger, v: Vault) -> int:
     """Sanitize and apply tag replacements based on taxonomy and config mapping."""
     dry_run = getattr(args, "dry_run", False)
     target = getattr(args, "target", None)
