@@ -63,4 +63,8 @@ __all__ = [
     "NamingError",
     "LinkResolutionError",
     "AttachmentError",
+    "UndoError",
+    "UndoConflictError",
+    "RedoError",
+    "RedoConflictError",
 ]
