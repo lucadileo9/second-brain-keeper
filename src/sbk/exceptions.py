@@ -64,6 +64,14 @@ class UndoConflictError(UndoError):
     """Raised when undo fails because a file was modified externally after the transaction."""
 
 
+class RedoError(SBKError):
+    """Raised when a redo operation fails to re-apply a reverted transaction."""
+
+
+class RedoConflictError(RedoError):
+    """Raised when redo fails because a file was modified externally after reverting."""
+
+
 class DocumentError(SBKError):
     """Raised when parsing or manipulating a MarkdownDocument fails."""
 
@@ -94,3 +102,7 @@ class TemplateError(SBKError):
 
 class CreationError(SBKError):
     """Raised when note creation fails due to collisions or validation errors."""
+
+
+class FormatError(SBKError):
+    """Raised when data cannot be serialized to the requested format."""

@@ -50,9 +50,11 @@ def test_taxonomy_add_tag_and_undo(mock_vault_with_config: Path) -> None:
     assert res.tag == "area/ricerca"
     assert "area/ricerca" in v.tags_show()
 
-    # Adding again should be idempotent (no duplicate)
+    # Adding again should be idempotent (no duplicate, no transaction)
     res_dup = v.tags_add("area/ricerca")
     assert res_dup.tag == "area/ricerca"
+    assert res_dup.action == "already_exists"
+    assert res_dup.tx_id is None
 
     # Verify content format in 00_Tassonomia_Tag.md
     tax_path = res.taxonomy_file
@@ -74,6 +76,15 @@ def test_taxonomy_add_invalid_tag(mock_vault_with_config: Path) -> None:
 
     with pytest.raises(TaxonomyError, match="Invalid tag format"):
         v.tags_add("")
+
+    with pytest.raises(TaxonomyError, match="Invalid tag format"):
+        v.tags_add("òèlèwl23")
+
+    with pytest.raises(TaxonomyError, match="Invalid tag format"):
+        v.tags_add("-tag")
+
+    with pytest.raises(TaxonomyError, match="Invalid tag format"):
+        v.tags_add("tag#special!")
 
 
 def test_taxonomy_remove_tag_and_safety_checks(mock_vault_with_config: Path) -> None:

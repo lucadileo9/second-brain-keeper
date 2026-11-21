@@ -3,16 +3,14 @@
 import logging
 from argparse import Namespace
 
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_naming(args: Namespace, logger: logging.Logger) -> int:
     """Normalize file names according to configured naming strategy and sync wikilinks."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     dry_run = getattr(args, "dry_run", False)

@@ -4,17 +4,15 @@ import logging
 from argparse import Namespace
 
 from ...exceptions import TaxonomyError, VaultKeeperError
-from ...utils.formatters import format_output
-from ...vault import Vault
+from ...utils.formatters import ReportWriter
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_tags(args: Namespace, logger: logging.Logger) -> int:
     """Inspect and manipulate controlled tag taxonomy."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     action = getattr(args, "tag_action", None)
@@ -27,10 +25,17 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
         fmt = getattr(args, "format", "md")
         tags = v.tags_show(query=query)
 
+        outputs = ReportWriter.extract_outputs(args)
+
         data = [{"Tag": f"#{t}"} for t in tags]
         title = f"Tassonomia Tag ({len(tags)} registrati)" if not query else f"Tassonomia Tag (Filtro: '{query}')"
-        rendered = format_output(data, format=fmt, headers=["Tag"], title=title)
-        print(rendered)
+        rw = ReportWriter(data=data, headers=["Tag"], title=title)
+        rw.write_reports(
+            console_format=fmt,
+            output_files=outputs,
+            quiet=getattr(args, "quiet", False),
+            logger=logger,
+        )
         return EXIT_SUCCESS
 
     if action == "add":
@@ -45,9 +50,13 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
             logger.error("Failed to add tag: %s", exc)
             return EXIT_ERROR
 
+        if res.action == "already_exists":
+            logger.info("Tag '#%s' is already registered in %s", res.tag, res.taxonomy_file.name)
+            return EXIT_SUCCESS
+
         logger.info("%sTag '#%s' successfully registered in %s", prefix, res.tag, res.taxonomy_file.name)
         if res.tx_id:
-            logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+            logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
         return EXIT_SUCCESS
 
     if action == "remove":
@@ -66,7 +75,7 @@ def handle_tags(args: Namespace, logger: logging.Logger) -> int:
         if res.notes_affected_count > 0:
             logger.warning("  - Tag was referenced in %d note(s)", res.notes_affected_count)
         if res.tx_id:
-            logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+            logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
         return EXIT_SUCCESS
 
     logger.error("Unknown tag action: %s", action)

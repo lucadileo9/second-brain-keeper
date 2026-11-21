@@ -1,6 +1,7 @@
 """High-level Vault facade providing pure Python API for all vault operations."""
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -23,7 +24,7 @@ from .core.frontmatter import (
     update_frontmatter,
 )
 from .core.graph import GraphTelemetry
-from .core.indices import IndexManager, write_folder_index
+from .core.indices import IndexManager
 from .core.journal import TransactionJournal
 from .core.lifecycle import (
     archive_item,
@@ -57,6 +58,7 @@ from .models import (
     Note,
     OffloadResult,
     OrphanAttachment,
+    RedoResult,
     RenameResult,
     SearchResult,
     TagMutationResult,
@@ -105,9 +107,13 @@ class Vault:
         """Invalidate the in-memory catalog cache."""
         self._catalog = None
 
-    def audit(self, phases: Optional[List[int]] = None) -> AuditReport:
+    def audit(
+        self,
+        phases: Optional[List[int]] = None,
+        target: Optional[Union[str, Path]] = None,
+    ) -> AuditReport:
         """Execute multi-phase diagnostic audit and return structured report."""
-        return run_audit(self.config, phases_to_run=phases)
+        return run_audit(self.config, phases_to_run=phases, target=target)
 
     def check_links(
         self,
@@ -154,7 +160,7 @@ class Vault:
             return results
 
         if orphans:
-            desc = f"Clean {len(orphans)} orphan attachments ({'hard' if hard_delete else 'soft'} delete)"
+            desc = f"Clean {len(orphans)} orphan attachments - {'hard' if hard_delete else 'soft'} delete"
             with self.journal.begin_transaction("clean-attachments", desc) as tx:
                 for orphan in orphans:
                     orig = orphan.file_path
@@ -210,16 +216,23 @@ class Vault:
         if not base_dir.is_dir():
             raise VaultNotFoundError(f"Target is not a directory: {base_dir}")
 
-        # Index the target directory itself
-        idx_path, changed = write_folder_index(base_dir, self.config, self.catalog, dry_run=dry_run)
-        results.append((idx_path, changed))
-
+        mgr = IndexManager(self.config)
+        dirs_to_index = [base_dir]
         if recursive:
-            for d in walk_vault_directories(self.config, target_dir=base_dir):
-                idx_path, changed = write_folder_index(d, self.config, self.catalog, dry_run=dry_run)
-                results.append((idx_path, changed))
+            dirs_to_index.extend(walk_vault_directories(self.config, target_dir=base_dir))
 
-        if not dry_run:
+        target_name = base_dir.name if base_dir != self.root else "vault"
+        desc = f"Generate indices recursively for {target_name}" if recursive else f"Generate indices for {target_name}"
+
+        if dry_run:
+            for d in dirs_to_index:
+                idx_path, changed = mgr.rebuild_index(d, catalog=self.catalog, dry_run=True)
+                results.append((idx_path, changed))
+        else:
+            with self.journal.begin_transaction("generate-indices", desc) as tx:
+                for d in dirs_to_index:
+                    idx_path, changed = mgr.rebuild_index(d, catalog=self.catalog, transaction=tx, dry_run=False)
+                    results.append((idx_path, changed))
             self.refresh()
 
         return results
@@ -240,13 +253,25 @@ class Vault:
         if not note_path.is_file():
             raise FrontmatterError(f"Note not found: {note_path}")
 
+        clean_type = str(new_type).strip() if new_type is not None else ""
+        if not clean_type:
+            raise FrontmatterError("Note type cannot be empty.")
+
+        if self.config.allowed_types:
+            matched = [t for t in self.config.allowed_types if t.lower() == clean_type.lower()]
+            if not matched:
+                raise FrontmatterError(
+                    f"Invalid note type '{new_type}'. Allowed types: {sorted(self.config.allowed_types)}"
+                )
+            clean_type = matched[0]
+
         content = note_path.read_text(encoding="utf-8")
-        updated = update_frontmatter(content, {self.config.type_field: new_type})
+        updated = update_frontmatter(content, {self.config.type_field: clean_type})
         if updated == content:
             return False
 
         if not dry_run:
-            with self.journal.begin_transaction("frontmatter", f"Set tipo to '{new_type}' in {note_path.name}") as tx:
+            with self.journal.begin_transaction("frontmatter", f"Set tipo to '{clean_type}' in {note_path.name}") as tx:
                 tx.write_content(note_path, updated)
             self.refresh()
 
@@ -383,6 +408,13 @@ class Vault:
     def undo(self, tx_id: Optional[str] = None, dry_run: bool = False) -> UndoResult:
         """Revert a transaction and refresh in-memory catalog."""
         result = self.journal.undo(tx_id=tx_id, dry_run=dry_run)
+        if result.success and not dry_run:
+            self.refresh()
+        return result
+
+    def redo(self, tx_id: Optional[str] = None, dry_run: bool = False) -> RedoResult:
+        """Re-apply a previously reverted transaction and refresh in-memory catalog."""
+        result = self.journal.redo(tx_id=tx_id, dry_run=dry_run)
         if result.success and not dry_run:
             self.refresh()
         return result
@@ -576,12 +608,14 @@ class Vault:
     ) -> OffloadResult:
         """Offload heavy binary files (>50MB or specific target) to cold storage."""
         link_engine = WikilinkEngine(self.config)
+        idx_mgr = IndexManager(self.config)
 
         if dry_run:
             return offload_media(
                 self.catalog,
                 self.config,
                 link_engine,
+                index_manager=idx_mgr,
                 target=target,
                 dry_run=True,
             )
@@ -592,6 +626,7 @@ class Vault:
                 self.catalog,
                 self.config,
                 link_engine,
+                index_manager=idx_mgr,
                 target=target,
                 transaction=tx,
                 dry_run=False,
@@ -614,10 +649,17 @@ class Vault:
     ) -> TagMutationResult:
         """Add a tag to the controlled taxonomy file in alphabetical order."""
         engine = TaxonomyEngine(self.config)
-        if dry_run:
+        clean = tag.lstrip("#").strip().lower()
+        if not clean or not re.match(r"^[a-z0-9][a-z0-9_\-/]*$", clean):
+            raise TaxonomyError(
+                f"Invalid tag format '{tag}'. Tags must match '^[a-z0-9][a-z0-9_\\-/]*$' "
+                f"(lowercase alphanumeric characters, underscores, hyphens, and slashes)."
+            )
+
+        if dry_run or engine.is_valid_tag(clean):
             return engine.add_tag(tag, section=section, dry_run=True)
 
-        with self.journal.begin_transaction("tags", f"Add tag '{tag}' to taxonomy") as tx:
+        with self.journal.begin_transaction("tags", f"Add tag '{clean}' to taxonomy") as tx:
             res = engine.add_tag(tag, section=section, transaction=tx, dry_run=False)
 
         self.refresh()
@@ -654,21 +696,30 @@ class Vault:
         cm = ConfigurationManager()
         if cfg_file.is_file():
             cm.load(str(cfg_file))
+        else:
+            from .config import generate_default_config_content
+
+            default_content = generate_default_config_content(self.root)
+            cfg_file.write_text(default_content, encoding="utf-8")
+            cm.load(str(cfg_file))
 
         typed_val: Any = value
         if isinstance(value, str):
-            if value.lower() in ("true", "yes", "on"):
+            val_lower = value.strip().lower()
+            if val_lower in ("true", "yes", "on"):
                 typed_val = True
-            elif value.lower() in ("false", "no", "off"):
+            elif val_lower in ("false", "no", "off"):
                 typed_val = False
+            elif val_lower in ("none", "null"):
+                typed_val = None
             else:
                 try:
-                    typed_val = int(value)
+                    typed_val = int(value.strip())
                 except ValueError:
                     try:
-                        typed_val = float(value)
+                        typed_val = float(value.strip())
                     except ValueError:
-                        typed_val = value
+                        typed_val = value.strip()
 
         cm.set(key, typed_val)
 
@@ -789,7 +840,12 @@ class Vault:
                 existing_rel = first_path
             raise CreationError(f"Stem collision: a note with stem '{stem}' already exists at '{existing_rel}'.")
 
-        target_folder = resolve_target_folder(self.root, effective_tipo, folder)
+        target_folder = resolve_target_folder(
+            self.root,
+            effective_tipo,
+            folder,
+            inbox_folder=self.config.inbox_folder,
+        )
         dest_file = target_folder / f"{stem}.md"
         if dest_file.exists():
             raise CreationError(f"File already exists at destination: '{dest_file}'.")
@@ -842,7 +898,7 @@ class Vault:
                 dry_run=True,
             )
 
-        with self.journal.begin_transaction("create", f"Create note '{clean_title}' ({dest_file.name})") as tx:
+        with self.journal.begin_transaction("create", f"Create note {dest_file.name}") as tx:
             target_folder.mkdir(parents=True, exist_ok=True)
             tx.write_content(dest_file, rendered_content)
             idx_path, idx_updated = index_mgr.rebuild_index(target_folder, transaction=tx, dry_run=False)

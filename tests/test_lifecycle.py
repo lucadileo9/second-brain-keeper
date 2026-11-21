@@ -179,6 +179,10 @@ def test_rename_preflight_collisions_and_ambiguity(mock_vault_with_config: Path)
     dup_note.write_text("# Dup\n", encoding="utf-8")
     v.refresh()
 
+    # Path separator in new_name should raise NamingError
+    with pytest.raises(NamingError, match="without path separators"):
+        v.rename(note_beta, "20-29_Aree/Altra_Nota.md")
+
     # Should raise error without skip_links
     with pytest.raises(NamingError, match="Ambiguous source stem"):
         v.rename(note_beta, "Nota_Beta_Disambiguata")
@@ -223,6 +227,8 @@ def test_move_errors_and_dry_run(mock_vault_with_config: Path) -> None:
     # Dry-run
     res_dry = v.move(src_note, dest_dir, dry_run=True)
     assert res_dry.dest_path == dest_dir / "Nota_Beta.md"
+    assert res_dry.old_index_updated is True
+    assert res_dry.new_index_updated is True
     assert src_note.exists()
     assert not (dest_dir / "Nota_Beta.md").exists()
 
@@ -305,27 +311,36 @@ def test_offload_media_and_undo(mock_vault_with_config: Path) -> None:
     v = Vault(mock_vault_with_config)
 
     # Create a dummy large media file in attachments folder
-    large_media = mock_vault_with_config / "90-99_Allegati" / "Heavy_Presentation.mp4"
+    large_media = mock_vault_with_config / "90-99_Allegati" / "Heavy_Presentation.pdf"
     large_media.write_bytes(b"A" * 1024)
+
+    # Pre-build folder index for 90-99_Allegati
+    idx_mgr = IndexManager(v.config)
+    idx_mgr.rebuild_index(mock_vault_with_config / "90-99_Allegati")
+    idx_file = idx_mgr.get_index_path(mock_vault_with_config / "90-99_Allegati")
+    assert "[[Heavy_Presentation.pdf]]" in idx_file.read_text(encoding="utf-8")
 
     # Embed it in a note
     target_note = mock_vault_with_config / "20-29_Aree" / "Nota_Beta.md"
     note_content = target_note.read_text(encoding="utf-8")
-    target_note.write_text(note_content + "\n\nGuarda questo video:\n![[Heavy_Presentation.mp4]]\n", encoding="utf-8")
+    target_note.write_text(note_content + "\n\nGuarda questo file:\n![[Heavy_Presentation.pdf]]\n", encoding="utf-8")
     v.refresh()
 
     # Offload specific target
     res = v.offload(target=large_media)
     assert len(res.offloaded_files) == 1
     src, dst, size = res.offloaded_files[0]
-    assert src.name == "Heavy_Presentation.mp4"
+    assert src.name == "Heavy_Presentation.pdf"
     assert dst.exists()
     assert not large_media.exists()
     assert res.updated_notes_count >= 1
 
+    # Check that source folder index was synchronized (entry removed)
+    assert "[[Heavy_Presentation.pdf]]" not in idx_file.read_text(encoding="utf-8")
+
     # Check note content now has callout instead of direct embed
     updated_note = target_note.read_text(encoding="utf-8")
-    assert "![[Heavy_Presentation.mp4]]" not in updated_note
+    assert "![[Heavy_Presentation.pdf]]" not in updated_note
     assert "> [!INFO] Allegato archiviato su storage freddo" in updated_note
     assert f"[{src.name}]({dst.as_posix()})" in updated_note or f"[{src.name}](file://{dst.as_posix()})" in updated_note
 
@@ -335,7 +350,8 @@ def test_offload_media_and_undo(mock_vault_with_config: Path) -> None:
     assert large_media.exists()
     assert not dst.exists()
     reverted_note = target_note.read_text(encoding="utf-8")
-    assert "![[Heavy_Presentation.mp4]]" in reverted_note
+    assert "![[Heavy_Presentation.pdf]]" in reverted_note
+    assert "[[Heavy_Presentation.pdf]]" in idx_file.read_text(encoding="utf-8")
 
 
 def test_offload_errors_and_dry_run(mock_vault_with_config: Path) -> None:

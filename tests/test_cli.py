@@ -24,12 +24,10 @@ def test_cli_help(capsys) -> None:
     assert code == 0
     captured = capsys.readouterr()
     assert "audit" in captured.out
-    assert "check-links" in captured.out
     assert "clean-attachments" in captured.out
     assert "normalize-names" in captured.out
     assert "generate-indices" in captured.out
     assert "frontmatter" in captured.out
-    assert "disambiguate" in captured.out
     assert "init" in captured.out
 
 
@@ -70,10 +68,13 @@ def test_cli_audit(mock_vault: Path) -> None:
     assert log_file.is_file()
 
 
-def test_cli_check_links(mock_vault: Path) -> None:
-    """Verify sbk check-links identifies broken links."""
-    code = main(["--root", str(mock_vault), "check-links"])
-    assert code == 2
+def test_cli_deprecated_check_links_removed(mock_vault: Path) -> None:
+    """Verify deprecated check-links command is rejected by CLI argument parser."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(mock_vault), "check-links"])
+    assert exc.value.code == 2
 
 
 def test_cli_clean_attachments(mock_vault: Path) -> None:
@@ -120,6 +121,12 @@ def test_cli_generate_indices(mock_vault: Path) -> None:
 def test_cli_frontmatter_commands(mock_vault: Path) -> None:
     """Verify sbk frontmatter subcommands."""
     note = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
+
+    # set-type invalid
+    code_invalid = main(
+        ["--root", str(mock_vault), "frontmatter", "set-type", "--target", str(note), "--type", "TipoInvalido"]
+    )
+    assert code_invalid == 1
 
     # set-type
     code1 = main(["--root", str(mock_vault), "frontmatter", "set-type", "--target", str(note), "--type", "Risorsa"])
@@ -179,17 +186,19 @@ def test_cli_frontmatter_commands(mock_vault: Path) -> None:
     assert exc.value.code == 2
 
 
-def test_cli_disambiguate(mock_vault: Path) -> None:
-    """Verify sbk disambiguate detects no collisions, and reports when collisions exist."""
-    code_clean = main(["--root", str(mock_vault), "disambiguate"])
-    assert code_clean == 0
+def test_cli_deprecated_disambiguate_removed(mock_vault: Path) -> None:
+    """Verify deprecated disambiguate command is rejected and replaced by audit --step 1."""
+    import pytest
 
-    # Create collision
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(mock_vault), "disambiguate"])
+    assert exc.value.code == 2
+
+    # Verify audit --step 5 detects collision and links
     dup = mock_vault / "20-29_Aree" / "Progetto_Alpha.md"
     dup.write_text("# Duplicate Progetto Alpha", encoding="utf-8")
-
-    code_collision = main(["--root", str(mock_vault), "disambiguate"])
-    assert code_collision == 2
+    code_audit = main(["--root", str(mock_vault), "audit", "--step", "5"])
+    assert code_audit == 2
 
 
 def test_cli_logging_file(empty_temp_dir: Path) -> None:
@@ -202,3 +211,15 @@ def test_cli_logging_file(empty_temp_dir: Path) -> None:
         assert "Message for file logging" in log_path.read_text(encoding="utf-8")
     finally:
         close_cli_logger(logger)
+
+
+def test_cli_outside_vault_fails_with_exit_code_1(empty_temp_dir: Path, monkeypatch, capsys) -> None:
+    """Verify running CLI commands outside a vault without --root returns exit code 1."""
+    isolated_dir = empty_temp_dir / "RandomFolder"
+    isolated_dir.mkdir()
+    monkeypatch.chdir(isolated_dir)
+
+    code = main(["audit"])
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "No Obsidian vault found" in captured.out or "No Obsidian vault found" in captured.err

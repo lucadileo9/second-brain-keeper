@@ -4,16 +4,14 @@ import logging
 from argparse import Namespace
 
 from ...exceptions import ArchiveError, VaultKeeperError
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_archive(args: Namespace, logger: logging.Logger) -> int:
     """Archive a note or project folder to mirror cold storage with Tombstone support."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     target_arg = getattr(args, "target")
@@ -40,6 +38,6 @@ def handle_archive(args: Namespace, logger: logging.Logger) -> int:
     if res.summary:
         logger.info("  - Preserved summary: %s", res.summary)
     if res.tx_id:
-        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+        logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
 
     return EXIT_SUCCESS

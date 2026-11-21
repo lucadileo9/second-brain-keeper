@@ -1,0 +1,58 @@
+name: Documentation
+description: Improve or suggest documentation for Second Brain Keeper
+title: "[DOCS] "
+labels: ["documentation"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the documentation of Second Brain Keeper!
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Documentation Area
+      options:
+        - "README & Quickstart"
+        - "CLI Commands Reference"
+        - "Interactive Sandbox Guide"
+        - "Architecture & Transaction Journal"
+        - "Facade API & Python SDK"
+        - "Testing Suite"
+        - "Contributing Guide"
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: Current Issue
+      description: What is missing, unclear, or outdated?
+      placeholder: "The documentation doesn't explain how to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Suggested Improvement
+      description: How would you improve or expand the documentation?
+      placeholder: "I suggest adding an example showing..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Where is the documentation to be improved?
+      placeholder: "docs/cli/commands_reference.md / README.md"
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I can write or submit a pull request for this documentation

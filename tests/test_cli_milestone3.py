@@ -29,6 +29,14 @@ def test_cli_tags_show_add_remove(mock_vault_with_config: Path, capsys) -> None:
     code_add = main(["--root", root_str, "tags", "add", "area/marketing"])
     assert code_add == 0
 
+    # 5b. tags add duplicate (idempotent, exit 0)
+    code_add_dup = main(["--root", root_str, "tags", "add", "area/marketing"])
+    assert code_add_dup == 0
+
+    # 5c. tags add invalid syntax (fails, exit 1)
+    code_add_inv = main(["--root", root_str, "tags", "add", "òèlèwl23"])
+    assert code_add_inv != 0
+
     # Verify presence via show
     capsys.readouterr()  # clear buffer
     main(["--root", root_str, "tags", "show", "--query", "marketing"])
@@ -75,6 +83,16 @@ def test_cli_config_show_and_set(mock_vault_with_config: Path) -> None:
     code_undo = main(["--root", root_str, "undo"])
     assert code_undo == 0
     assert 'style = "kebab-case"' not in cfg_file.read_text(encoding="utf-8")
+
+    # config set boolean
+    code_set_bool = main(["--root", root_str, "config", "set", "tags.strict_taxonomy", "false"])
+    assert code_set_bool == 0
+    assert "strict_taxonomy = false" in cfg_file.read_text(encoding="utf-8")
+
+    # config set integer
+    code_set_int = main(["--root", root_str, "config", "set", "attachments.heavy_file_threshold_mb", "100"])
+    assert code_set_int == 0
+    assert "heavy_file_threshold_mb = 100" in cfg_file.read_text(encoding="utf-8")
 
 
 def test_cli_search(mock_vault_with_config: Path, capsys) -> None:
@@ -165,3 +183,23 @@ def test_cli_milestone3_edge_cases_and_formats(mock_vault_with_config: Path, cap
 
     # 5. graph-health in yaml format
     assert main(["--root", root_str, "graph-health", "--format", "yaml"]) == 0
+
+    # 6. quiet mode suppresses console output completely
+    capsys.readouterr()
+    code_quiet = main(["--root", root_str, "-q", "graph-health"])
+    assert code_quiet == 0
+    assert capsys.readouterr().out == ""
+
+    # 7. repeatable -o exports to multiple files
+    out_json = mock_vault_with_config / "telemetry.json"
+    out_yaml = mock_vault_with_config / "telemetry.yaml"
+    code_multi_out = main(["--root", root_str, "-q", "graph-health", "-o", str(out_json), "-o", str(out_yaml)])
+    assert code_multi_out == 0
+    assert out_json.exists()
+    assert out_yaml.exists()
+    assert '"total_nodes"' in out_json.read_text(encoding="utf-8")
+    assert "total_nodes:" in out_yaml.read_text(encoding="utf-8")
+
+    # 8. Hierarchical graph-health export to CSV raises error and returns exit code 1
+    code_csv_fail = main(["--root", root_str, "graph-health", "-o", str(mock_vault_with_config / "fail.csv")])
+    assert code_csv_fail != 0

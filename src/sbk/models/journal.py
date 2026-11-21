@@ -92,3 +92,14 @@ class UndoResult:
     reverted_actions: int
     message: str
     affected_files: List[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class RedoResult:
+    """Outcome of a redo operation re-applying a previously reverted transaction."""
+
+    tx_id: str
+    success: bool
+    reapplied_actions: int
+    message: str
+    affected_files: List[str] = field(default_factory=list)

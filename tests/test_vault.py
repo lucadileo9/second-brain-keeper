@@ -2,7 +2,10 @@
 
 from pathlib import Path
 
+import pytest
+
 from sbk import Vault
+from sbk.exceptions import FrontmatterError
 
 
 def test_vault_facade_initialization(mock_vault: Path) -> None:
@@ -34,8 +37,12 @@ def test_vault_facade_frontmatter_operations(mock_vault: Path) -> None:
     v = Vault(mock_vault)
     note_path = mock_vault / "10-19_Progetti" / "Progetto_Alpha.md"
 
-    # Update type
-    changed = v.set_frontmatter_type(note_path, "Risorsa")
+    # Reject invalid type
+    with pytest.raises(FrontmatterError, match="Invalid note type 'TipoInesistente'"):
+        v.set_frontmatter_type(note_path, "TipoInesistente")
+
+    # Update type with case normalization
+    changed = v.set_frontmatter_type(note_path, "risorsa")
     assert changed is True
     note = v.get_note(note_path)
     assert note.frontmatter is not None

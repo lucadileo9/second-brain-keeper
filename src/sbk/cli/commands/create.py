@@ -6,16 +6,14 @@ from typing import List, Optional
 
 from ...exceptions import CreationError, TaxonomyError, TemplateError, VaultKeeperError
 from ...utils.formatters import format_output, render_markdown_table
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_create(args: Namespace, logger: logging.Logger) -> int:
     """Create a standardized note using templates, strict validation, and folder auto-routing."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     title = getattr(args, "title")

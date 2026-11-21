@@ -9,8 +9,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List, Optional, Union
 
-from ..exceptions import JournalError, UndoConflictError, UndoError
-from ..models import ActionRecord, TransactionRecord, UndoResult
+from ..exceptions import (
+    JournalError,
+    RedoConflictError,
+    RedoError,
+    UndoConflictError,
+    UndoError,
+)
+from ..models import ActionRecord, RedoResult, TransactionRecord, UndoResult
+from ..utils.helpers import resolve_vault_path
 
 
 def compute_content_hash(text: Optional[str]) -> Optional[str]:
@@ -63,7 +70,7 @@ class TransactionContext:
 
     def _resolve_rel(self, path: Union[str, Path]) -> str:
         """Return path relative to vault root as a normalized POSIX string."""
-        abs_p = (self.root_path / path if not Path(path).is_absolute() else Path(path)).resolve()
+        abs_p = resolve_vault_path(path, self.root_path)
         try:
             return abs_p.relative_to(self.root_path).as_posix()
         except ValueError:
@@ -76,7 +83,7 @@ class TransactionContext:
         encoding: str = "utf-8",
     ) -> None:
         """Write content to a file while recording pre-state and post-state."""
-        abs_path = (self.root_path / file_path if not Path(file_path).is_absolute() else Path(file_path)).resolve()
+        abs_path = resolve_vault_path(file_path, self.root_path)
         rel_path = self._resolve_rel(abs_path)
         abs_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -118,8 +125,8 @@ class TransactionContext:
         dest_path: Union[str, Path],
     ) -> None:
         """Move or rename a file or directory while recording previous and new path."""
-        abs_src = (self.root_path / source_path if not Path(source_path).is_absolute() else Path(source_path)).resolve()
-        abs_dest = (self.root_path / dest_path if not Path(dest_path).is_absolute() else Path(dest_path)).resolve()
+        abs_src = resolve_vault_path(source_path, self.root_path)
+        abs_dest = resolve_vault_path(dest_path, self.root_path)
 
         if not abs_src.exists():
             raise JournalError(f"Cannot move nonexistent path: {abs_src}")
@@ -153,7 +160,7 @@ class TransactionContext:
         trash_folder: Optional[str] = None,
     ) -> None:
         """Delete or soft-delete a file while logging rollback capabilities."""
-        abs_path = (self.root_path / file_path if not Path(file_path).is_absolute() else Path(file_path)).resolve()
+        abs_path = resolve_vault_path(file_path, self.root_path)
         if not abs_path.exists():
             return
 
@@ -398,6 +405,103 @@ class TransactionJournal:
             success=True,
             reverted_actions=reverted_count,
             message=f"Successfully reverted transaction {record.tx_id} ({record.command}).",
+            affected_files=affected_files,
+        )
+
+    def redo(self, tx_id: Optional[str] = None, dry_run: bool = False) -> RedoResult:
+        """Re-apply a previously reverted transaction and restore its mutations."""
+        if tx_id:
+            record = self.get_transaction(tx_id)
+            if not record:
+                raise RedoError(f"Transaction '{tx_id}' not found in history.")
+        else:
+            candidates = [r for r in self.list_transactions(limit=100) if r.reverted]
+            if not candidates:
+                return RedoResult(
+                    tx_id="",
+                    success=False,
+                    reapplied_actions=0,
+                    message="No undone transactions found in history to redo.",
+                )
+            candidates.sort(key=lambda r: (r.reverted_at or "", r.timestamp, r.tx_id), reverse=True)
+            record = candidates[0]
+
+        if not record.reverted:
+            raise RedoError(f"Transaction '{record.tx_id}' is already active and cannot be redone.")
+
+        # Pre-flight check: verify filesystem state before reapplying actions
+        for idx, action in enumerate(record.actions):
+            abs_p = self.root_path / action.path
+            is_first_action_for_path = not any(a.path == action.path for a in record.actions[:idx])
+
+            if action.action_type == "write_content":
+                if not abs_p.is_file():
+                    raise RedoConflictError(f"Target file '{action.path}' does not exist for redo verification.")
+                if is_first_action_for_path and action.hash_before:
+                    current_hash = compute_content_hash(abs_p.read_text(encoding="utf-8"))
+                    if current_hash != action.hash_before:
+                        raise RedoConflictError(
+                            f"File '{action.path}' was modified after being reverted (hash mismatch). "
+                            "Aborting redo to protect recent changes."
+                        )
+            elif action.action_type == "create_file":
+                if abs_p.exists():
+                    raise RedoConflictError(f"Target file '{action.path}' already exists. Cannot redo creation.")
+            elif action.action_type == "move_file" and action.target_path:
+                abs_dest = self.root_path / action.target_path
+                if not abs_p.exists():
+                    raise RedoConflictError(
+                        f"Source file '{action.path}' is missing. Cannot redo move to '{action.target_path}'."
+                    )
+                if abs_dest.exists():
+                    raise RedoConflictError(
+                        f"Target destination '{action.target_path}' already exists. Cannot redo move."
+                    )
+            elif action.action_type == "delete_file":
+                if not abs_p.exists():
+                    raise RedoConflictError(f"File '{action.path}' to delete does not exist for redo.")
+
+        affected_files: List[str] = [a.path for a in record.actions]
+
+        if dry_run:
+            return RedoResult(
+                tx_id=record.tx_id,
+                success=True,
+                reapplied_actions=len(record.actions),
+                message=f"[DRY-RUN] Transaction {record.tx_id} ({record.command}) can be safely reapplied.",
+                affected_files=affected_files,
+            )
+
+        # Apply actions in forward order
+        reapplied_count = 0
+        for action in record.actions:
+            abs_p = self.root_path / action.path
+            if action.action_type in ("write_content", "create_file"):
+                if action.content_after is not None:
+                    abs_p.parent.mkdir(parents=True, exist_ok=True)
+                    abs_p.write_text(action.content_after, encoding="utf-8")
+                    reapplied_count += 1
+            elif action.action_type == "move_file" and action.target_path:
+                abs_dest = self.root_path / action.target_path
+                if abs_p.exists():
+                    abs_dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(abs_p), str(abs_dest))
+                    reapplied_count += 1
+            elif action.action_type == "delete_file":
+                if abs_p.exists():
+                    abs_p.unlink()
+                    reapplied_count += 1
+
+        # Mark record as active (reverted = False) and re-save
+        record.reverted = False
+        record.reverted_at = None
+        self._save_transaction(record)
+
+        return RedoResult(
+            tx_id=record.tx_id,
+            success=True,
+            reapplied_actions=reapplied_count,
+            message=f"Successfully reapplied transaction {record.tx_id} ({record.command}).",
             affected_files=affected_files,
         )
 

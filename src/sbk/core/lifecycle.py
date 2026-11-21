@@ -15,7 +15,7 @@ from ..models import (
     VaultCatalog,
     VaultConfig,
 )
-from ..utils.helpers import format_bytes, truncate_text
+from ..utils.helpers import format_bytes, resolve_vault_path, truncate_text
 from .attachments import find_heavy_files
 from .document import MarkdownDocument
 from .indices import IndexManager
@@ -69,6 +69,12 @@ def rename_item(
     resolved_src = source_path.resolve()
     if not resolved_src.exists():
         raise NamingError(f"Source file does not exist: {resolved_src}")
+
+    if "/" in new_name or "\\" in new_name:
+        raise NamingError(
+            f"Invalid new name '{new_name}': must be a file name or stem without path separators. "
+            "To move an item to a different folder, use 'sbk move'."
+        )
 
     # Determine new stem and target filename
     if resolved_src.is_file():
@@ -155,12 +161,19 @@ def rename_item(
             transaction=transaction,
             dry_run=dry_run,
         )
+        if not is_md and resolved_src.suffix:
+            updated_links += wikilink_engine.refactor_in_vault(
+                resolved_src.name,
+                dest_path.name,
+                transaction=transaction,
+                dry_run=dry_run,
+            )
 
     # Synchronize folder index
     index_updated = index_manager.rename_entry(
         resolved_src.parent,
-        old_stem,
-        new_stem,
+        old_stem if is_md else resolved_src.name,
+        new_stem if is_md else dest_path.name,
         transaction=transaction,
         dry_run=dry_run,
     )
@@ -212,13 +225,16 @@ def batch_rename_items(
     new_stems_set: Set[str] = set()
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
-    sources_being_renamed = {
-        (root_resolved / Path(s) if not Path(s).is_absolute() else Path(s)).resolve() for s in mapping.keys()
-    }
+    sources_being_renamed = {resolve_vault_path(s, root_resolved) for s in mapping.keys()}
 
     for src_raw, new_name in mapping.items():
-        src_raw_p = Path(src_raw)
-        src_p = (root_resolved / src_raw_p if not src_raw_p.is_absolute() else src_raw_p).resolve()
+        if "/" in new_name or "\\" in new_name:
+            raise NamingError(
+                f"Batch rename failed pre-flight: Invalid target name '{new_name}' for '{src_raw}'. "
+                "Target must be a file name or stem without path separators. To move items, use 'sbk move'."
+            )
+
+        src_p = resolve_vault_path(src_raw, root_resolved)
 
         if not src_p.exists():
             raise NamingError(f"Batch rename failed pre-flight: Source file does not exist: '{src_raw}'")
@@ -329,6 +345,13 @@ def batch_rename_items(
                 transaction=transaction,
                 dry_run=dry_run,
             )
+            if not is_md and src_p.suffix:
+                updated_links += wikilink_engine.refactor_in_vault(
+                    src_p.name,
+                    dest_path.name,
+                    transaction=transaction,
+                    dry_run=dry_run,
+                )
 
         affected_folders.add(src_p.parent)
 
@@ -381,16 +404,20 @@ def move_item(
     new_index_updated = False
 
     if resolved_src.parent != resolved_dest_dir:
-        _, old_index_updated = index_manager.rebuild_index(
-            resolved_src.parent,
-            transaction=transaction,
-            dry_run=dry_run,
-        )
-        _, new_index_updated = index_manager.rebuild_index(
-            resolved_dest_dir,
-            transaction=transaction,
-            dry_run=dry_run,
-        )
+        if dry_run:
+            old_index_updated = True
+            new_index_updated = True
+        else:
+            _, old_index_updated = index_manager.rebuild_index(
+                resolved_src.parent,
+                transaction=transaction,
+                dry_run=False,
+            )
+            _, new_index_updated = index_manager.rebuild_index(
+                resolved_dest_dir,
+                transaction=transaction,
+                dry_run=False,
+            )
 
     return MoveResult(
         source_path=resolved_src,
@@ -433,14 +460,12 @@ def batch_move_items(
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
     for src_raw, dest_raw in mapping.items():
-        src_raw_p = Path(src_raw)
-        src_p = (root_resolved / src_raw_p if not src_raw_p.is_absolute() else src_raw_p).resolve()
+        src_p = resolve_vault_path(src_raw, root_resolved)
 
         if not src_p.exists():
             raise LifecycleError(f"Batch move failed pre-flight: Source path does not exist: '{src_raw}'")
 
-        dest_raw_p = Path(dest_raw)
-        dest_target = (root_resolved / dest_raw_p if not dest_raw_p.is_absolute() else dest_raw_p).resolve()
+        dest_target = resolve_vault_path(dest_raw, root_resolved)
 
         if src_p.is_file():
             if dest_target.suffix == src_p.suffix and not dest_target.is_dir():
@@ -463,10 +488,7 @@ def batch_move_items(
         # Check existing destination collision on disk
         if dest_file.exists() and dest_file != src_p:
             # Allow destination only if it is also a source being moved away in this same batch
-            is_src_in_batch = any(
-                (root_resolved / Path(s) if not Path(s).is_absolute() else Path(s)).resolve() == dest_file
-                for s in mapping.keys()
-            )
+            is_src_in_batch = any(resolve_vault_path(s, root_resolved) == dest_file for s in mapping.keys())
             if not is_src_in_batch:
                 raise LifecycleError(f"Batch move failed pre-flight: Destination already exists: '{dest_file}'")
 
@@ -534,9 +556,9 @@ def archive_item(
 
     # Determine archive root directory
     if config.archive_path:
-        archive_root = Path(config.archive_path).resolve()
+        archive_root = resolve_vault_path(config.archive_path, config.root_path)
     else:
-        archive_root = config.root_path.parent / "Archive"
+        archive_root = (config.root_path.parent / "Archive").resolve()
 
     try:
         rel = resolved_item.relative_to(config.root_path.resolve())
@@ -627,22 +649,25 @@ def offload_media(
     catalog: VaultCatalog,
     config: VaultConfig,
     wikilink_engine: WikilinkEngine,
+    index_manager: Optional[IndexManager] = None,
     target: Optional[Union[str, Path]] = None,
     transaction: Optional[Any] = None,
     dry_run: bool = False,
 ) -> OffloadResult:
     """Offload heavy binary files (>50MB or specific target) to cold storage."""
+    idx_mgr = index_manager or IndexManager(config)
     # Determine offload destination directory
     if config.offload_folder:
-        offload_dir = Path(config.offload_folder).resolve()
+        offload_dir = resolve_vault_path(config.offload_folder, config.root_path)
     elif config.archive_path:
-        offload_dir = Path(config.archive_path).resolve() / "90-99_Allegati_Pesanti"
+        archive_root = resolve_vault_path(config.archive_path, config.root_path)
+        offload_dir = archive_root / "90-99_Allegati_Pesanti"
     else:
-        offload_dir = config.root_path.parent / "Archive" / "90-99_Allegati_Pesanti"
+        offload_dir = (config.root_path.parent / "Archive" / "90-99_Allegati_Pesanti").resolve()
 
     files_to_offload: List[Path] = []
     if target:
-        target_p = (config.root_path / target if not Path(target).is_absolute() else Path(target)).resolve()
+        target_p = resolve_vault_path(target, config.root_path)
         if target_p.is_file():
             files_to_offload.append(target_p)
         elif target_p.is_dir():
@@ -663,8 +688,10 @@ def offload_media(
     offloaded_records: List[Tuple[Path, Path, int]] = []
     total_bytes = 0
     total_updated_notes = 0
+    affected_folders: Set[Path] = set()
 
     for file_path in files_to_offload:
+        affected_folders.add(file_path.parent)
         try:
             size = file_path.stat().st_size
         except OSError:
@@ -709,6 +736,11 @@ def offload_media(
                         transaction.write_content(note_path, updated_content)
                     else:
                         note_path.write_text(updated_content, encoding="utf-8")
+
+    # Rebuild indices of all source directories that had attachments offloaded
+    for folder in affected_folders:
+        if folder.exists():
+            idx_mgr.rebuild_index(folder, transaction=transaction, dry_run=dry_run)
 
     return OffloadResult(
         offloaded_files=offloaded_records,

@@ -2,6 +2,23 @@
 
 import hashlib
 from pathlib import Path
+from typing import Union
+
+
+def resolve_vault_path(path: Union[str, Path], root_path: Path) -> Path:
+    """Resolve a path relative to the vault root directory if not already absolute.
+
+    Args:
+        path: Path string or Path object to resolve.
+        root_path: Vault root directory to anchor relative paths against.
+
+    Returns:
+        Canonical absolute resolved Path.
+    """
+    p = Path(path)
+    if p.is_absolute():
+        return p.resolve()
+    return (root_path / p).resolve()
 
 
 def format_bytes(size_bytes: int) -> str:

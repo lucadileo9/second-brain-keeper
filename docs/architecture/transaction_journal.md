@@ -1,6 +1,6 @@
 # Architettura del Transaction Journal e Rollback Engine
 
-Il modulo [`src/sbk/core/journal.py`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/core/journal.py) implementa il motore transazionale di `second-brain-keeper`. 
+Il modulo [`src/sbk/core/journal.py`](file:///home/lucadileo9/scripts/second-brain-keeper/src/sbk/core/journal.py) implementa il motore transazionale di `second-brain-keeper`.
 Il suo obiettivo è fornire garanzie di affidabilità di tipo **ACID-like** (Atomicità, Consistenza, Isolamento logico, Durabilità) su normali file system (ext4, NTFS, APFS), senza richiedere l'installazione di database esterni come SQLite o PostgreSQL.
 
 Ogni singola operazione di mutazione (creazione, rinomina, spostamento, archiviazione, offload, alterazione frontmatter, modifica tag) è gestita come una transazione atomica reversibile.
@@ -28,7 +28,7 @@ La manipolazione di un Second Brain di oltre 3.900 note comporta rischi sistemic
 stateDiagram-v2
     [*] --> Inizializzazione: begin_transaction(command, desc)
     Inizializzazione --> InCorso: __enter__() genera tx_id
-    
+
     state InCorso {
         [*] --> EsecuzioneAzione
         EsecuzioneAzione --> RegistrazioneAzione: Calcolo SHA-256 pre/post
@@ -37,7 +37,7 @@ stateDiagram-v2
 
     InCorso --> Commit: __exit__() senza eccezioni
     InCorso --> InFlightRollback: Eccezione sollevata nel blocco
-    
+
     InFlightRollback --> Fallita: Ripristino azioni in ordine inverso
     Fallita --> [*]: Propaga eccezione al chiamante
 
@@ -129,8 +129,12 @@ Scansiona `.sbk/history/*.json.gz`, decomprime e deserializza i record, ordinand
 Carica e restituisce il record completo per uno specifico identificativo transazione.
 
 ##### `undo(tx_id: Optional[str] = None, dry_run: bool = False) -> UndoResult`
-Annulla una transazione completata. 
-Se `tx_id` non è specificato, individua automaticamente **la più recente transazione non ancora revertita**.
+Annulla una transazione completata.
+Se `tx_id` non è specificato, individua automaticamente **la più recente transazione attiva non ancora revertita**.
+
+##### `redo(tx_id: Optional[str] = None, dry_run: bool = False) -> RedoResult`
+Riapplica una transazione precedentemente annullata tramite `undo()`.
+Se `tx_id` non è specificato, individua automaticamente **la più recente transazione revertita** (`reverted=True`).
 
 ---
 
@@ -144,11 +148,11 @@ flowchart TD
     FindTx --> CheckReverted{"Gia revertita?"}
     CheckReverted -- Si --> ErrAlreadyReverted["Solleva UndoError"]
     CheckReverted -- No --> PreFlightLoop["Fase 1: Pre-flight Integrity Check"]
-    
+
     subgraph PreFlightCheck ["Verifica Integrita"]
         PreFlightLoop --> InspectAction["Ispezione ActionRecord"]
         InspectAction --> ActionType{"Tipo Azione"}
-        
+
         ActionType -- "write_content / create_file" --> CheckExists{"File esiste su disco?"}
         CheckExists -- No --> ErrMissing["Solleva UndoConflictError"]
         CheckExists -- Si --> ComputeCurrentHash["Calcolo SHA-256 attuale"]
@@ -161,7 +165,7 @@ flowchart TD
         CheckDestExists -- Si --> CheckOrigOccupied{"Posizione originale libera?"}
         CheckOrigOccupied -- Occupata --> ErrCollision["Solleva UndoConflictError"]
         CheckOrigOccupied -- Libera --> NextAction
-        
+
         NextAction --> MoreActions{"Altre azioni?"}
         MoreActions -- Si --> InspectAction
     end
@@ -184,7 +188,30 @@ flowchart TD
 
 ---
 
-## 5. Politica di Pruning Automatico (`prune_history`)
+## 5. Algoritmo di Ri-Applicazione (`redo`)
+
+Il metodo `redo()` consente di ripristinare le mutazioni di una transazione annullata tramite `undo()` applicando verifiche di consistenza speculari:
+
+1. **Selezione della Transazione**: Se `tx_id` non è specificato, cerca la transazione più recente avente `reverted=True`. Se la transazione selezionata non risulta revertita, solleva `RedoError`.
+2. **Pre-flight Integrity Check**:
+   - Per `write_content` e `create_file`: verifica che il file su disco coincida con lo stato di pre-mutazione (`hash_before`). Se il file è stato alterato da terzi nel frattempo, solleva `RedoConflictError`.
+   - Per `move_file`: verifica che la posizione originaria esista ancora e che la destinazione prevista non sia occupata da file estranei.
+3. **Riesecuzione Sequenziale**: Se tutte le verifiche pre-volo hanno successo e `dry_run=False`, il motore riapplica le azioni nell'ordine cronologico originario.
+4. **Finalizzazione dello Stato**: Il campo `reverted` viene reimpostato a `False`, il timestamp aggiornato e il file `.json.gz` salvato su disco.
+
+---
+
+## 6. Indice Veloce delle Transazioni (`index.json`)
+
+Per evitare di decomprimere l'intero archivio `.sbk/history/*.json.gz` a ogni interrogazione di cronologia (`sbk history`), il Journal mantiene un file di indice aggregato e compatto in:
+```text
+.sbk/history/index.json
+```
+L'indice registra i metadati chiave di ciascuna transazione (`tx_id`, `command`, `timestamp`, `reverted`, `description`, numero azioni), consentendo ricerche e paginazioni immediate a costo computazionale trascurabile.
+
+---
+
+## 7. Politica di Pruning Automatico (`prune_history`)
 
 Per prevenire la proliferazione indefinita di file storici su installazioni di lunga durata:
 - A ogni salvataggio di transazione (`_save_transaction`), il journal invoca `prune_history(keep=self.max_transactions)`.

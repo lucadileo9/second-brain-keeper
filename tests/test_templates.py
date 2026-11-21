@@ -163,26 +163,17 @@ Custom: {{client_name}}
 
 
 def test_resolve_target_folder(temp_vault: Path) -> None:
-    """Test Johnny.Decimal auto-routing for various note types."""
-    # Progetto -> 10-19_Progetti
-    f_proj = resolve_target_folder(temp_vault, "Progetto")
-    assert f_proj.name == "10-19_Progetti"
+    """Test deterministic inbox routing and custom folder resolution."""
+    # Default inbox routing
+    f_default = resolve_target_folder(temp_vault, "Progetto")
+    assert f_default == (temp_vault / "00_Inbox").resolve()
 
-    # Contatto -> 30-39_Carriera/32_CRM
-    f_crm = resolve_target_folder(temp_vault, "Contatto")
-    assert f_crm.name == "32_CRM"
-
-    # Appunto -> 20-29_Istruzione
     f_app = resolve_target_folder(temp_vault, "Appunto")
-    assert f_app.name == "20-29_Istruzione"
+    assert f_app == (temp_vault / "00_Inbox").resolve()
 
-    # Risorsa -> 20-29_Istruzione
-    f_ris = resolve_target_folder(temp_vault, "Risorsa")
-    assert f_ris.name == "20-29_Istruzione"
-
-    # Sistema -> 01-09_Risorse_Di_Sistema
-    f_sys = resolve_target_folder(temp_vault, "Sistema")
-    assert "01-09" in f_sys.name
+    # Configured custom inbox folder
+    f_custom_inbox = resolve_target_folder(temp_vault, "Appunto", inbox_folder="Staging")
+    assert f_custom_inbox == (temp_vault / "Staging").resolve()
 
     # Custom valid folder
     f_custom = resolve_target_folder(temp_vault, "Appunto", custom_folder="10-19_Progetti")
@@ -216,7 +207,7 @@ def test_index_manager_add_and_remove_entry(temp_vault: Path) -> None:
 
 
 def test_vault_create_note_success_and_undo(temp_vault: Path) -> None:
-    """Test full creation workflow: auto-routing, index update, transaction journal, and undo."""
+    """Test full creation workflow: explicit folder, index update, transaction journal, and undo."""
     vault = Vault(root_path=temp_vault)
 
     # Pre-generate folder index so it has initial state
@@ -225,6 +216,7 @@ def test_vault_create_note_success_and_undo(temp_vault: Path) -> None:
     res = vault.create(
         title="Nuovo Sviluppo Backend",
         tipo="Progetto",
+        folder="10-19_Progetti",
         tags=["tech/python"],
         template="Template_Progetto",
     )
@@ -258,6 +250,14 @@ def test_vault_create_note_success_and_undo(temp_vault: Path) -> None:
     assert "[[Nuovo_Sviluppo_Backend]]" not in reverted_idx_content
 
 
+def test_vault_create_default_inbox(temp_vault: Path) -> None:
+    """Verify default note creation lands deterministically in 00_Inbox."""
+    vault = Vault(root_path=temp_vault)
+    res = vault.create(title="Idea Rapida", tipo="Appunto")
+    assert res.file_path.parent == (temp_vault / "00_Inbox").resolve()
+    assert res.file_path.is_file()
+
+
 def test_vault_create_dry_run(temp_vault: Path) -> None:
     """Test dry-run simulation of note creation."""
     vault = Vault(root_path=temp_vault)
@@ -272,7 +272,7 @@ def test_vault_create_dry_run(temp_vault: Path) -> None:
     assert not res.file_path.exists()
     assert res.tx_id is None
     assert res.stem == "Bozza_Idea_Innovativa"
-    assert res.file_path.parent.name == "20-29_Istruzione"
+    assert res.file_path.parent.name == "00_Inbox"
 
 
 def test_vault_create_preflight_checks(temp_vault: Path) -> None:
@@ -328,11 +328,11 @@ def test_template_engine_additional_edge_cases(temp_vault: Path) -> None:
     assert "{{unknown_variable}}" in rendered
     assert "tipo: Sistema" in rendered
 
-    # Fallback routing when no Johnny.Decimal folders exist
+    # Deterministic inbox routing when no special folders exist
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as empty_dir:
         empty_root = Path(empty_dir).resolve()
         f_fallback = resolve_target_folder(empty_root, "Progetto")
-        assert f_fallback == empty_root
+        assert f_fallback == (empty_root / "00_Inbox").resolve()
 
         # Missing templates directory
         empty_cfg = load_vault_config(root_path=empty_root)

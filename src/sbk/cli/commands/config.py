@@ -5,16 +5,14 @@ from argparse import Namespace
 
 from ...exceptions import ConfigurationError, VaultKeeperError
 from ...utils.formatters import format_output
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_config(args: Namespace, logger: logging.Logger) -> int:
     """Inspect and update vault configuration directives."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     action = getattr(args, "config_action", None)

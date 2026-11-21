@@ -107,3 +107,48 @@ def test_format_output_edge_cases() -> None:
 
     obj_res = format_output(CustomObj(), format=OutputFormat.JSON)
     assert '"key": "val"' in obj_res
+
+
+def test_format_output_csv_hierarchical_guard_raises_format_error() -> None:
+    """Verify that hierarchical structures raise FormatError when exporting to CSV."""
+    import pytest
+
+    from sbk.exceptions import FormatError
+
+    nested_dict = {
+        "status": "ok",
+        "nested": {"child": 1},
+        "items": [1, 2, 3],
+    }
+    with pytest.raises(FormatError, match="hierarchical/nested"):
+        format_output(nested_dict, format=OutputFormat.CSV)
+
+
+def test_report_writer_dispatch_and_quiet(tmp_path) -> None:
+    """Verify ReportWriter file writing, extension detection, and quiet suppression."""
+    from sbk.utils.formatters import ReportWriter
+
+    data = {"name": "test_report", "items": ["a", "b"]}
+    f_json = tmp_path / "report.json"
+    f_yaml = tmp_path / "report.yaml"
+    f_md = tmp_path / "report.md"
+
+    rw = ReportWriter(
+        data=data,
+        md_rendered="# Custom Markdown\nContent here",
+        title="Custom Report",
+    )
+
+    rw.write_reports(
+        console_format="md",
+        output_files=[f_json, f_yaml, f_md],
+        quiet=True,
+    )
+
+    assert f_json.exists()
+    assert f_yaml.exists()
+    assert f_md.exists()
+
+    assert json.loads(f_json.read_text(encoding="utf-8"))["name"] == "test_report"
+    assert "name: test_report" in f_yaml.read_text(encoding="utf-8")
+    assert "# Custom Markdown" in f_md.read_text(encoding="utf-8")

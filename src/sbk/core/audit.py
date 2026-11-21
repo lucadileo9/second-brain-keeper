@@ -1,7 +1,8 @@
 """Unified 5-phase audit diagnostics engine with health score calculation."""
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Union
 
 from ..models import AuditReport, PhaseResult, VaultCatalog, VaultConfig
 from .attachments import find_heavy_files, find_orphan_attachments
@@ -15,13 +16,50 @@ from .naming import normalize_name
 from .traversal import build_vault_catalog, walk_vault_files
 
 
-def run_phase_1_storage(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult:
+def _get_target_files(
+    config: VaultConfig,
+    target_path: Optional[Path] = None,
+    extensions: Optional[Set[str]] = None,
+    filter_extensions: bool = True,
+) -> List[Path]:
+    """Retrieve list of files to audit, respecting target scope and extension filters."""
+    if target_path is None:
+        return list(
+            walk_vault_files(
+                config,
+                target_dir=config.root_path,
+                extensions=extensions,
+                filter_extensions=filter_extensions,
+            )
+        )
+    p = target_path.resolve()
+    if p.is_file():
+        if filter_extensions and extensions and p.suffix.lower() not in extensions:
+            return []
+        return [p]
+    if p.is_dir():
+        return list(
+            walk_vault_files(
+                config,
+                target_dir=p,
+                extensions=extensions,
+                filter_extensions=filter_extensions,
+            )
+        )
+    return []
+
+
+def run_phase_1_storage(
+    config: VaultConfig,
+    catalog: VaultCatalog,
+    target_path: Optional[Path] = None,
+) -> PhaseResult:
     """Phase 1: Storage and filesystem diagnostics."""
     issues: List[str] = []
     warnings: List[str] = []
     heavy_files_list: List[str] = []
 
-    for file_path in walk_vault_files(config, target_dir=config.root_path, filter_extensions=False):
+    for file_path in _get_target_files(config, target_path, filter_extensions=False):
         # 1. Path length check
         path_len = len(str(file_path))
         if path_len > config.max_path_length:
@@ -34,6 +72,12 @@ def run_phase_1_storage(config: VaultConfig, catalog: VaultCatalog) -> PhaseResu
     # 3. Heavy files check
     heavy_files = find_heavy_files(catalog, config)
     for hf, size in heavy_files:
+        if target_path:
+            t_resolved = target_path.resolve()
+            if t_resolved.is_file() and hf != t_resolved:
+                continue
+            if t_resolved.is_dir() and t_resolved not in hf.parents and t_resolved != hf:
+                continue
         size_mb = size / (1024 * 1024)
         msg = f"Heavy file: {hf.name} ({size_mb:.1f} MB >= {config.heavy_file_threshold_mb} MB)"
         warnings.append(msg)
@@ -47,19 +91,23 @@ def run_phase_1_storage(config: VaultConfig, catalog: VaultCatalog) -> PhaseResu
 
     return PhaseResult(
         phase_id=1,
-        title="Storage & Filesystem",
+        title="Filesystem",
         issues=issues,
         warnings=warnings,
         metrics=metrics,
     )
 
 
-def run_phase_2_naming(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult:
+def run_phase_2_naming(
+    config: VaultConfig,
+    catalog: VaultCatalog,
+    target_path: Optional[Path] = None,
+) -> PhaseResult:
     """Phase 2: Naming convention diagnostics."""
     issues: List[str] = []
     warnings: List[str] = []
 
-    for file_path in walk_vault_files(config, target_dir=config.root_path, filter_extensions=False):
+    for file_path in _get_target_files(config, target_path, filter_extensions=False):
         expected_name = normalize_name(file_path.name, config, is_directory=False)
         if file_path.name != expected_name:
             issues.append(f"Naming violation: '{file_path.name}' -> expected '{expected_name}'")
@@ -78,13 +126,17 @@ def run_phase_2_naming(config: VaultConfig, catalog: VaultCatalog) -> PhaseResul
     )
 
 
-def run_phase_3_frontmatter(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult:
+def run_phase_3_frontmatter(
+    config: VaultConfig,
+    catalog: VaultCatalog,
+    target_path: Optional[Path] = None,
+) -> PhaseResult:
     """Phase 3: Frontmatter and type taxonomy diagnostics."""
     issues: List[str] = []
     warnings: List[str] = []
     type_counts: Dict[str, int] = {}
 
-    for note_path in walk_vault_files(config, target_dir=config.root_path, extensions={".md"}):
+    for note_path in _get_target_files(config, target_path, extensions={".md"}):
         note = read_note(note_path, config.root_path, type_field=config.type_field)
         rel_str = note.rel_path.as_posix()
 
@@ -114,14 +166,18 @@ def run_phase_3_frontmatter(config: VaultConfig, catalog: VaultCatalog) -> Phase
 
     return PhaseResult(
         phase_id=3,
-        title="Frontmatter & Types",
+        title="Frontmatter",
         issues=issues,
         warnings=warnings,
         metrics=metrics,
     )
 
 
-def run_phase_4_tags(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult:
+def run_phase_4_tags(
+    config: VaultConfig,
+    catalog: VaultCatalog,
+    target_path: Optional[Path] = None,
+) -> PhaseResult:
     """Phase 4: Tag taxonomy compliance diagnostics."""
     issues: List[str] = []
     warnings: List[str] = []
@@ -147,7 +203,7 @@ def run_phase_4_tags(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult:
     all_used_tags: Set[str] = set()
     unregistered_found: Set[str] = set()
 
-    for note_path in walk_vault_files(config, target_dir=config.root_path, extensions={".md"}):
+    for note_path in _get_target_files(config, target_path, extensions={".md"}):
         note = read_note(note_path, config.root_path, type_field=config.type_field)
         note_tags: Set[str] = set()
 
@@ -184,26 +240,40 @@ def run_phase_4_tags(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult:
     )
 
 
-def run_phase_5_links(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult:
-    """Phase 5: Link integrity and attachment diagnostics."""
+def run_phase_5_links(
+    config: VaultConfig,
+    catalog: VaultCatalog,
+    target_path: Optional[Path] = None,
+) -> PhaseResult:
+    """Phase 5: Referential integrity and attachment diagnostics."""
     issues: List[str] = []
     warnings: List[str] = []
 
     # 1. Broken links & broken embeds
-    broken = scan_broken_links(catalog, config)
+    broken = scan_broken_links(catalog, config, target_file_or_dir=target_path)
     for b in broken:
         link_kind = "media embed" if b.is_media_embed() else "wikilink"
         issues.append(f"Broken {link_kind}: [[{b.clean_target}]] in {b.source_file.name}:{b.line_number}")
 
-    # 2. Stem collisions
+    # 2. Stem collisions with detailed multiline indentation
     collisions = find_stem_collisions(catalog)
     for stem, paths in collisions.items():
-        rel_paths_str = ", ".join(p.name for p in paths)
-        warnings.append(f"Stem collision for '{stem}': found in {len(paths)} locations ({rel_paths_str})")
+        if target_path:
+            t_resolved = target_path.resolve()
+            if not any(t_resolved == p or t_resolved in p.parents for p in paths):
+                continue
+        paths_str = "\n".join(f"      * {p.relative_to(config.root_path).as_posix()}" for p in paths)
+        warnings.append(f"Stem collision: '{stem}' e' ambiguo e risolve a molteplici file:\n{paths_str}")
 
     # 3. Orphan attachments
     orphans = find_orphan_attachments(catalog, config)
     for o in orphans:
+        if target_path:
+            t_resolved = target_path.resolve()
+            if t_resolved.is_file() and o.file_path != t_resolved:
+                continue
+            if t_resolved.is_dir() and t_resolved not in o.file_path.parents and t_resolved != o.file_path:
+                continue
         warnings.append(f"Orphan attachment: {o.rel_path.as_posix()} ({o.size_bytes} bytes)")
 
     metrics = {
@@ -214,7 +284,7 @@ def run_phase_5_links(config: VaultConfig, catalog: VaultCatalog) -> PhaseResult
 
     return PhaseResult(
         phase_id=5,
-        title="Links & Attachments",
+        title="Referential Integrity",
         issues=issues,
         warnings=warnings,
         metrics=metrics,
@@ -248,26 +318,28 @@ def compute_health_score(phases: List[PhaseResult]) -> float:
 def run_audit(
     config: VaultConfig,
     phases_to_run: Optional[List[int]] = None,
+    target: Optional[Union[str, Path]] = None,
 ) -> AuditReport:
     """Execute unified multi-phase vault audit."""
     catalog = build_vault_catalog(config)
     selected_phases = phases_to_run or [1, 2, 3, 4, 5]
     results: List[PhaseResult] = []
+    target_p = Path(target).resolve() if target else None
 
     if 1 in selected_phases:
-        results.append(run_phase_1_storage(config, catalog))
+        results.append(run_phase_1_storage(config, catalog, target_path=target_p))
     if 2 in selected_phases:
-        results.append(run_phase_2_naming(config, catalog))
+        results.append(run_phase_2_naming(config, catalog, target_path=target_p))
     if 3 in selected_phases:
-        results.append(run_phase_3_frontmatter(config, catalog))
+        results.append(run_phase_3_frontmatter(config, catalog, target_path=target_p))
     if 4 in selected_phases:
-        results.append(run_phase_4_tags(config, catalog))
+        results.append(run_phase_4_tags(config, catalog, target_path=target_p))
     if 5 in selected_phases:
-        results.append(run_phase_5_links(config, catalog))
+        results.append(run_phase_5_links(config, catalog, target_path=target_p))
 
     total_issues = sum(len(p.issues) for p in results)
     score = compute_health_score(results)
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return AuditReport(
         vault_root=config.root_path,

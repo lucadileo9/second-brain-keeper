@@ -4,16 +4,14 @@ import logging
 from argparse import Namespace
 
 from ...exceptions import LifecycleError, VaultKeeperError
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_move(args: Namespace, logger: logging.Logger) -> int:
     """Move a file or folder into a different Johnny.Decimal directory."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     batch_arg = getattr(args, "batch", None)
@@ -64,6 +62,6 @@ def handle_move(args: Namespace, logger: logging.Logger) -> int:
     logger.info("  - Source folder index updated: %s", "Yes" if res.old_index_updated else "No")
     logger.info("  - Destination folder index updated: %s", "Yes" if res.new_index_updated else "No")
     if res.tx_id:
-        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+        logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
 
     return EXIT_SUCCESS

@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 from typing import Any, List, Optional, Set, Tuple
 
-from ..exceptions import NamingError
 from ..models import VaultCatalog, VaultConfig
 from .traversal import walk_vault_files
 
@@ -130,54 +129,26 @@ def rename_vault_item(
     dry_run: bool = False,
     transaction: Optional[Any] = None,
 ) -> Tuple[Path, int]:
-    """Rename a file or folder and synchronize all incoming wikilinks.
+    """Rename a file or folder and synchronize all incoming wikilinks and folder indices.
 
-    Returns:
-        (new_path, total_updated_links)
+    Maintained as a convenience helper; delegates directly to lifecycle.rename_item.
     """
-    resolved_old = old_path.resolve()
-    if not resolved_old.exists():
-        raise NamingError(f"Target path does not exist: {resolved_old}")
+    from .indices import IndexManager
+    from .lifecycle import rename_item
+    from .links import WikilinkEngine
 
-    dest_path = resolved_old.parent / new_name
-    if dest_path == resolved_old:
-        return resolved_old, 0
-
-    if dest_path.exists():
-        raise NamingError(f"Destination already exists: {dest_path}")
-
-    old_stem = resolved_old.stem
-    new_stem = dest_path.stem
-    is_dir = resolved_old.is_dir()
-
-    total_links_updated = 0
-
-    # Scan and update links in all vault markdown notes
-    for note_path in walk_vault_files(config, target_dir=config.root_path, extensions={".md"}):
-        if not is_dir and note_path.resolve() == resolved_old:
-            continue
-
-        try:
-            content = note_path.read_text(encoding="utf-8")
-        except Exception:
-            continue
-
-        new_content, count = update_wikilinks_in_content(content, old_stem, new_stem)
-        if count > 0:
-            total_links_updated += count
-            if not dry_run:
-                if transaction:
-                    transaction.write_content(note_path, new_content)
-                else:
-                    note_path.write_text(new_content, encoding="utf-8")
-
-    if not dry_run:
-        if transaction:
-            transaction.move_file(resolved_old, dest_path)
-        else:
-            resolved_old.rename(dest_path)
-
-    return dest_path, total_links_updated
+    res = rename_item(
+        catalog=catalog,
+        config=config,
+        index_manager=IndexManager(config),
+        wikilink_engine=WikilinkEngine(config),
+        source_path=old_path,
+        new_name=new_name,
+        skip_links=False,
+        transaction=transaction,
+        dry_run=dry_run,
+    )
+    return res.new_path, res.updated_links_count
 
 
 def batch_normalize(
@@ -189,9 +160,17 @@ def batch_normalize(
 ) -> List[Tuple[Path, Path, int]]:
     """Scan and normalize all file and directory names in target directory.
 
+    Synchronizes wikilinks, H1 headings, and folder indices (00_Indice.md).
     Returns list of:
         (old_path, new_path, updated_links_count)
     """
+    from .indices import IndexManager
+    from .lifecycle import rename_item
+    from .links import WikilinkEngine
+
+    idx_mgr = IndexManager(config)
+    wl_engine = WikilinkEngine(config)
+
     results: List[Tuple[Path, Path, int]] = []
     root = target_dir or config.root_path
 
@@ -199,14 +178,17 @@ def batch_normalize(
     for file_path in list(walk_vault_files(config, target_dir=root, extensions=None)):
         norm_fname = normalize_name(file_path.name, config, is_directory=False)
         if norm_fname != file_path.name:
-            dest, links_cnt = rename_vault_item(
-                catalog,
-                config,
-                file_path,
-                norm_fname,
-                dry_run=dry_run,
+            res = rename_item(
+                catalog=catalog,
+                config=config,
+                index_manager=idx_mgr,
+                wikilink_engine=wl_engine,
+                source_path=file_path,
+                new_name=norm_fname,
+                skip_links=False,
                 transaction=transaction,
+                dry_run=dry_run,
             )
-            results.append((file_path, dest, links_cnt))
+            results.append((file_path, res.new_path, res.updated_links_count))
 
     return results

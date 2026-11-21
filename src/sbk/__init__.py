@@ -1,6 +1,6 @@
 """SBK (Second Brain Keeper): Universal Second Brain governance, link validator and maintenance toolkit."""
 
-from .config import generate_default_config_content, load_vault_config
+from .config import discover_vault_root, generate_default_config_content, load_vault_config
 from .exceptions import (
     AttachmentError,
     ConfigurationError,
@@ -8,9 +8,13 @@ from .exceptions import (
     FrontmatterError,
     LinkResolutionError,
     NamingError,
+    RedoConflictError,
+    RedoError,
     SBKError,
     TaxonomyError,
     TemplateError,
+    UndoConflictError,
+    UndoError,
     VaultKeeperError,
     VaultNotFoundError,
 )
@@ -22,6 +26,8 @@ from .models import (
     Note,
     OrphanAttachment,
     PhaseResult,
+    RedoResult,
+    UndoResult,
     VaultCatalog,
     VaultConfig,
 )
@@ -34,9 +40,12 @@ __all__ = [
     "Vault",
     "VaultConfig",
     "load_vault_config",
+    "discover_vault_root",
     "generate_default_config_content",
     "BrokenLink",
     "CreateResult",
+    "UndoResult",
+    "RedoResult",
     "Frontmatter",
     "Note",
     "OrphanAttachment",
@@ -54,4 +63,8 @@ __all__ = [
     "NamingError",
     "LinkResolutionError",
     "AttachmentError",
+    "UndoError",
+    "UndoConflictError",
+    "RedoError",
+    "RedoConflictError",
 ]

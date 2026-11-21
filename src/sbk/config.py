@@ -17,6 +17,8 @@ root_path = "{root_path}"
 allowed_extensions = [".md", ".pdf", ".png", ".jpg", ".jpeg", ".svg", ".docx", ".xlsx", ".pptx"]
 ignored_folders = [".obsidian", ".trash", ".git", ".stversions", ".deleted", "node_modules", ".venv", ".sbk", ".vaultkeeper"]
 max_path_length = 240
+archive_path = "../Archive"
+inbox_folder = "00_Inbox"
 
 [naming]
 style = "Title_Case"                         # "Title_Case", "kebab-case", "snake_case", "none"
@@ -73,6 +75,20 @@ def find_config_file(root_path: Path, explicit_path: Optional[Path] = None) -> O
     return None
 
 
+def discover_vault_root(start_path: Optional[Path] = None) -> Optional[Path]:
+    """Search upward from start_path (or Path.cwd()) looking for vault.toml.
+
+    Traverses parent directories recursively until vault.toml is found or filesystem root is reached.
+    Similar to git repository discovery (.git directory resolution).
+    """
+    current = (start_path or Path.cwd()).resolve()
+    for candidate_dir in [current, *current.parents]:
+        cfg_file = candidate_dir / "vault.toml"
+        if cfg_file.is_file():
+            return candidate_dir
+    return None
+
+
 def load_vault_config(
     root_path: Optional[Path] = None,
     config_file: Optional[Path] = None,
@@ -80,7 +96,7 @@ def load_vault_config(
     """Load and validate VaultConfig using proteus.
 
     Args:
-        root_path: Root directory of the vault. If None, loaded from configuration.
+        root_path: Root directory of the vault. If None, discovered via upward directory traversal.
         config_file: Optional explicit path to vault.toml or config.toml.
 
     Returns:
@@ -88,22 +104,37 @@ def load_vault_config(
 
     Raises:
         ConfigurationError: If configuration is invalid or missing required values.
-        VaultNotFoundError: If target vault root does not exist.
+        VaultNotFoundError: If target vault root does not exist or cannot be discovered.
     """
     cm = ConfigurationManager()
     cfg_path = None
+    effective_root: Optional[Path] = None
 
     if root_path is not None:
         target_root = Path(root_path).resolve()
         if not target_root.is_dir():
             raise VaultNotFoundError(f"Vault root directory does not exist: {target_root}")
         cfg_path = find_config_file(target_root, config_file)
+        effective_root = target_root
     elif config_file is not None:
         cfg_path = Path(config_file).resolve()
         if not cfg_path.is_file():
             raise ConfigurationError(f"Config file not found: {cfg_path}")
+        effective_root = cfg_path.parent
     else:
-        cfg_path = find_config_file(Path.cwd(), None)
+        discovered_root = discover_vault_root()
+        if discovered_root is not None:
+            effective_root = discovered_root
+            cfg_path = discovered_root / "vault.toml"
+        else:
+            user_cfg = Path.home() / ".config" / "vaultkeeper" / "config.toml"
+            if user_cfg.is_file():
+                cfg_path = user_cfg.resolve()
+            else:
+                raise VaultNotFoundError(
+                    "No Obsidian vault found in the current directory or any parent directories (missing vault.toml). "
+                    "Run 'sbk init' to initialize a vault or specify '--root <path>'."
+                )
 
     if cfg_path and cfg_path.is_file():
         try:
@@ -119,15 +150,18 @@ def load_vault_config(
             return default
 
     raw_root = safe_get("vault.root_path")
-    if root_path is not None:
-        effective_root = Path(root_path).resolve()
-    elif raw_root:
-        effective_root = Path(raw_root).resolve()
-    else:
-        effective_root = Path.cwd().resolve()
+    if root_path is None and raw_root and raw_root != "{root_path}":
+        p = Path(raw_root)
+        if not p.is_absolute() and cfg_path:
+            p = (cfg_path.parent / p).resolve()
+        if p.is_dir():
+            effective_root = p
 
-    if not effective_root.is_dir():
-        raise VaultNotFoundError(f"Vault root directory does not exist: {effective_root}")
+    if effective_root is None or not effective_root.is_dir():
+        raise VaultNotFoundError(
+            f"Vault root directory does not exist: {effective_root}. "
+            "Run 'sbk init' to initialize a vault or specify '--root <path>'."
+        )
 
     # Extract vault section
     allowed_ext_raw = safe_get("vault.allowed_extensions")
@@ -239,6 +273,7 @@ def load_vault_config(
     # Extract extended lifecycle and history sections
     archive_path_raw = safe_get("vault.archive_path")
     archive_path = str(archive_path_raw) if archive_path_raw else None
+    inbox_folder = str(safe_get("vault.inbox_folder") or "00_Inbox")
     templates_folder = str(safe_get("vault.templates_folder") or "00-09_Meta/02_Template")
     offload_folder_raw = safe_get("attachments.offload_folder")
     offload_folder = str(offload_folder_raw) if offload_folder_raw else None
@@ -269,6 +304,7 @@ def load_vault_config(
         index_summary_max_chars=index_summary_max_chars,
         include_non_md_in_indices=include_non_md,
         archive_path=archive_path,
+        inbox_folder=inbox_folder,
         templates_folder=templates_folder,
         offload_folder=offload_folder,
         max_undo_history=max_undo_history,

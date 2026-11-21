@@ -5,16 +5,14 @@ from argparse import Namespace
 
 from ...exceptions import OffloadError, VaultKeeperError
 from ...utils.helpers import format_bytes
-from ...vault import Vault
+from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 
 
 def handle_offload(args: Namespace, logger: logging.Logger) -> int:
     """Offload heavy binary files (>50MB or specific target) to cold storage."""
-    try:
-        v = Vault(root_path=getattr(args, "root", None), config_file=getattr(args, "config", None))
-    except Exception as exc:
-        logger.error("Failed to initialize vault: %s", exc)
+    v = get_vault(args, logger)
+    if not v:
         return EXIT_ERROR
 
     target_arg = getattr(args, "target", None)
@@ -48,6 +46,6 @@ def handle_offload(args: Namespace, logger: logging.Logger) -> int:
 
     logger.info("  - Updated notes with external links: %d", res.updated_notes_count)
     if res.tx_id:
-        logger.info("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
+        logger.debug("  - Transaction ID: %s (reversible with 'sbk undo')", res.tx_id)
 
     return EXIT_SUCCESS

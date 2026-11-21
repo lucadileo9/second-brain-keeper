@@ -5,9 +5,12 @@ import io
 import json
 from dataclasses import asdict, is_dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union
 
 import yaml
+
+from ..exceptions import FormatError
 
 
 class OutputFormat(str, Enum):
@@ -25,6 +28,18 @@ class OutputFormat(str, Enum):
         for member in cls:
             if member.value == normalized:
                 return member
+        return cls.MD
+
+    @classmethod
+    def from_extension(cls, path: Union[str, Path]) -> "OutputFormat":
+        """Infer OutputFormat from file path extension."""
+        ext = Path(path).suffix.lower()
+        if ext in (".json",):
+            return cls.JSON
+        if ext in (".yaml", ".yml"):
+            return cls.YAML
+        if ext in (".csv",):
+            return cls.CSV
         return cls.MD
 
 
@@ -81,20 +96,31 @@ def format_output(
         return yaml.safe_dump(normalized, sort_keys=False, allow_unicode=True, default_flow_style=False).strip()
 
     if fmt == OutputFormat.CSV:
+        # Validate that hierarchical/nested structures are not being exported to flat CSV
+        if isinstance(normalized, dict):
+            has_nested = any(isinstance(v, (dict, list)) and v for v in normalized.values())
+            if has_nested:
+                raise FormatError(
+                    "Cannot export hierarchical/nested data structure to flat CSV format. "
+                    "Use JSON, YAML, or Markdown instead."
+                )
+
         output = io.StringIO()
         writer = csv.writer(output)
 
-        if isinstance(normalized, list) and normalized:
-            if isinstance(normalized[0], dict):
+        if isinstance(normalized, list):
+            if normalized and isinstance(normalized[0], dict):
                 keys = headers or list(normalized[0].keys())
                 writer.writerow(keys)
                 for item in normalized:
                     if isinstance(item, dict):
                         writer.writerow([str(item.get(k, "")) for k in keys])
-            else:
+            elif normalized:
                 writer.writerow(["item"])
                 for item in normalized:
                     writer.writerow([str(item)])
+            else:
+                writer.writerow(headers or ["item"])
         elif isinstance(normalized, dict):
             writer.writerow(["property", "value"])
             for k, v in normalized.items():
@@ -129,3 +155,67 @@ def format_output(
         output_lines.append(str(normalized))
 
     return "\n".join(output_lines).strip()
+
+
+class ReportWriter:
+    """Centralized dispatcher for rendering and exporting reports across CLI commands."""
+
+    @classmethod
+    def extract_outputs(cls, args: Any) -> List[str]:
+        """Extract and normalize all destination file paths from CLI args (-o/--output)."""
+        outputs: List[str] = list(getattr(args, "outputs", None) or [])
+        single_out = getattr(args, "output", None)
+        if single_out:
+            if isinstance(single_out, list):
+                outputs.extend(str(p) for p in single_out if p)
+            elif isinstance(single_out, str):
+                outputs.append(single_out)
+        return [str(p) for p in outputs if p]
+
+    def __init__(
+        self,
+        data: Any,
+        md_rendered: Optional[str] = None,
+        headers: Optional[List[str]] = None,
+        title: Optional[str] = None,
+        tabular_data: Optional[Any] = None,
+    ) -> None:
+        self.data = data
+        self.md_rendered = md_rendered
+        self.headers = headers
+        self.title = title
+        self.tabular_data = tabular_data
+
+    def render(self, fmt: Union[OutputFormat, str]) -> str:
+        """Render data to target format string."""
+        f = OutputFormat.from_str(str(fmt)) if not isinstance(fmt, OutputFormat) else fmt
+        if f == OutputFormat.MD and self.md_rendered is not None:
+            return self.md_rendered
+        if f == OutputFormat.CSV and self.tabular_data is not None:
+            return format_output(self.tabular_data, format=f, headers=self.headers, title=self.title)
+        return format_output(self.data, format=f, headers=self.headers, title=self.title)
+
+    def write_reports(
+        self,
+        console_format: Union[OutputFormat, str] = OutputFormat.MD,
+        output_files: Optional[Sequence[Union[str, Path]]] = None,
+        quiet: bool = False,
+        logger: Optional[Any] = None,
+    ) -> None:
+        """Export reports to files and/or standard output based on format and quiet flags."""
+        if output_files:
+            for out_path in output_files:
+                if not out_path:
+                    continue
+                p = Path(out_path).resolve()
+                detected_fmt = OutputFormat.from_extension(p)
+                content = self.render(detected_fmt)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(content + "\n", encoding="utf-8")
+                if logger and not quiet:
+                    logger.info("Report saved to: %s", p)
+
+        if not quiet:
+            content = self.render(console_format)
+            if content:
+                print(content)
