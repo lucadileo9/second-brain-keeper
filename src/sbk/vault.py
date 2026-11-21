@@ -752,10 +752,18 @@ class Vault:
         tipo: Optional[str] = None,
         links_to: Optional[str] = None,
         folder: Optional[Union[str, Path]] = None,
+        word_match: bool = False,
     ) -> SearchResult:
         """Search notes in the vault matching combined criteria."""
         engine = SearchEngine(self.config, self.catalog)
-        return engine.search(query=query, tag=tag, tipo=tipo, links_to=links_to, folder=folder)
+        return engine.search(
+            query=query,
+            tag=tag,
+            tipo=tipo,
+            links_to=links_to,
+            folder=folder,
+            word_match=word_match,
+        )
 
     def graph_health(self) -> GraphHealthReport:
         """Execute non-punitive topological graph diagnostics."""

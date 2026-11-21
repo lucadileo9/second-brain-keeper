@@ -21,6 +21,7 @@ def handle_search(args: Namespace, logger: logging.Logger) -> int:
     tipo = getattr(args, "type", None)
     links_to = getattr(args, "links_to", None)
     folder = getattr(args, "folder", None)
+    word = getattr(args, "word", False)
     fmt = getattr(args, "format", "md")
 
     try:
@@ -30,6 +31,7 @@ def handle_search(args: Namespace, logger: logging.Logger) -> int:
             tipo=tipo,
             links_to=links_to,
             folder=folder,
+            word_match=word,
         )
     except (SearchError, VaultKeeperError) as exc:
         logger.error("Search failed: %s", exc)

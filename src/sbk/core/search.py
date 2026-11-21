@@ -1,5 +1,6 @@
 """Semantic search engine aware of Obsidian frontmatter, tags, links, and Johnny.Decimal folders."""
 
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
@@ -25,6 +26,7 @@ class SearchEngine:
         tipo: Optional[str] = None,
         links_to: Optional[str] = None,
         folder: Optional[Union[str, Path]] = None,
+        word_match: bool = False,
     ) -> SearchResult:
         """Search notes in the vault matching combined criteria."""
         folder_filter_p: Optional[Path] = None
@@ -45,6 +47,8 @@ class SearchEngine:
             active_filters["links_to"] = clean_links_to
         if folder_filter_p:
             active_filters["folder"] = folder_filter_p.as_posix()
+        if word_match:
+            active_filters["word_match"] = True
 
         items: List[SearchResultItem] = []
 
@@ -108,11 +112,19 @@ class SearchEngine:
                     break
 
             if clean_query:
-                q_lower = clean_query.lower()
-                stem_match = q_lower in note_path.stem.lower()
-                title_match = q_lower in title.lower()
-                body_match = q_lower in body.lower()
-                tag_match = any(q_lower in t for t in note_tags)
+                if word_match:
+                    word_pattern = re.compile(rf"\b{re.escape(clean_query)}\b", re.IGNORECASE)
+                    stem_match = bool(word_pattern.search(note_path.stem.replace("_", " ")))
+                    title_match = bool(word_pattern.search(title))
+                    body_match = bool(word_pattern.search(body))
+                    tag_match = any(bool(word_pattern.search(t.replace("_", " "))) for t in note_tags)
+                else:
+                    word_pattern = None
+                    q_lower = clean_query.lower()
+                    stem_match = q_lower in note_path.stem.lower()
+                    title_match = q_lower in title.lower()
+                    body_match = q_lower in body.lower()
+                    tag_match = any(q_lower in t for t in note_tags)
 
                 if not (stem_match or title_match or body_match or tag_match):
                     continue
@@ -127,7 +139,8 @@ class SearchEngine:
                 # Extract surrounding snippet
                 lines = body.splitlines()
                 for line in lines:
-                    if q_lower in line.lower() and not line.strip().startswith("#"):
+                    line_matches = bool(word_pattern.search(line)) if word_pattern else (q_lower in line.lower())
+                    if line_matches and not line.strip().startswith("#"):
                         snippet = truncate_text(line.strip(), 160)
                         break
                 if not snippet and lines:
