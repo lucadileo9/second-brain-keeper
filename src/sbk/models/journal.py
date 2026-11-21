@@ -103,4 +103,3 @@ class RedoResult:
     reapplied_actions: int
     message: str
     affected_files: List[str] = field(default_factory=list)
-

@@ -5,7 +5,7 @@ from argparse import Namespace
 
 from ...core.map import VaultMapEngine
 from ...exceptions import SBKError, VaultKeeperError
-from ...utils.formatters import ReportWriter, format_output
+from ...utils.formatters import ReportWriter
 from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 

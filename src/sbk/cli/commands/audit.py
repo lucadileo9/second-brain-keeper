@@ -1,9 +1,7 @@
 """Implementation of 'sbk audit' command."""
 
-import json
 import logging
 from argparse import Namespace
-from pathlib import Path
 
 from ...utils.formatters import ReportWriter
 from ..common import get_vault

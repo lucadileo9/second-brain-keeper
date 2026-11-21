@@ -156,4 +156,3 @@ def test_cli_generate_indices_and_undo(mock_vault_with_config: Path) -> None:
     code_redo = main(["--root", str(mock_vault_with_config), "redo"])
     assert code_redo == 0
     assert idx_file.is_file()
-

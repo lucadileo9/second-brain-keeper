@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 from typing import Any, List, Optional, Set, Tuple
 
-from ..exceptions import NamingError
 from ..models import VaultCatalog, VaultConfig
 from .traversal import walk_vault_files
 

@@ -112,6 +112,7 @@ def test_format_output_edge_cases() -> None:
 def test_format_output_csv_hierarchical_guard_raises_format_error() -> None:
     """Verify that hierarchical structures raise FormatError when exporting to CSV."""
     import pytest
+
     from sbk.exceptions import FormatError
 
     nested_dict = {
@@ -151,4 +152,3 @@ def test_report_writer_dispatch_and_quiet(tmp_path) -> None:
     assert json.loads(f_json.read_text(encoding="utf-8"))["name"] == "test_report"
     assert "name: test_report" in f_yaml.read_text(encoding="utf-8")
     assert "# Custom Markdown" in f_md.read_text(encoding="utf-8")
-

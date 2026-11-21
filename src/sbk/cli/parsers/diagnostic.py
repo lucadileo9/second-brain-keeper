@@ -43,9 +43,7 @@ def register_diagnostic_parsers(subparsers: argparse._SubParsersAction) -> None:
 
     # sbk graph-health
     graph_parser = subparsers.add_parser("graph-health", help="Execute non-punitive topological graph diagnostics.")
-    graph_parser.add_argument(
-        "--format", type=str, default="md", choices=["md", "json", "yaml"], help="Output format."
-    )
+    graph_parser.add_argument("--format", type=str, default="md", choices=["md", "json", "yaml"], help="Output format.")
     graph_parser.add_argument(
         "-o",
         "--output",

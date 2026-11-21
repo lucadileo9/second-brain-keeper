@@ -436,9 +436,7 @@ class TransactionJournal:
 
             if action.action_type == "write_content":
                 if not abs_p.is_file():
-                    raise RedoConflictError(
-                        f"Target file '{action.path}' does not exist for redo verification."
-                    )
+                    raise RedoConflictError(f"Target file '{action.path}' does not exist for redo verification.")
                 if is_first_action_for_path and action.hash_before:
                     current_hash = compute_content_hash(abs_p.read_text(encoding="utf-8"))
                     if current_hash != action.hash_before:
@@ -448,9 +446,7 @@ class TransactionJournal:
                         )
             elif action.action_type == "create_file":
                 if abs_p.exists():
-                    raise RedoConflictError(
-                        f"Target file '{action.path}' already exists. Cannot redo creation."
-                    )
+                    raise RedoConflictError(f"Target file '{action.path}' already exists. Cannot redo creation.")
             elif action.action_type == "move_file" and action.target_path:
                 abs_dest = self.root_path / action.target_path
                 if not abs_p.exists():
@@ -463,9 +459,7 @@ class TransactionJournal:
                     )
             elif action.action_type == "delete_file":
                 if not abs_p.exists():
-                    raise RedoConflictError(
-                        f"File '{action.path}' to delete does not exist for redo."
-                    )
+                    raise RedoConflictError(f"File '{action.path}' to delete does not exist for redo.")
 
         affected_files: List[str] = [a.path for a in record.actions]
 
@@ -510,7 +504,6 @@ class TransactionJournal:
             message=f"Successfully reapplied transaction {record.tx_id} ({record.command}).",
             affected_files=affected_files,
         )
-
 
     def prune_history(self, keep: int = 100) -> int:
         """Prune old transaction records, keeping only the most recent N records."""

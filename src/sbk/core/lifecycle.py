@@ -225,9 +225,7 @@ def batch_rename_items(
     new_stems_set: Set[str] = set()
 
     # Pre-flight Check Phase (Strict All-or-Nothing)
-    sources_being_renamed = {
-        resolve_vault_path(s, root_resolved) for s in mapping.keys()
-    }
+    sources_being_renamed = {resolve_vault_path(s, root_resolved) for s in mapping.keys()}
 
     for src_raw, new_name in mapping.items():
         if "/" in new_name or "\\" in new_name:
@@ -490,10 +488,7 @@ def batch_move_items(
         # Check existing destination collision on disk
         if dest_file.exists() and dest_file != src_p:
             # Allow destination only if it is also a source being moved away in this same batch
-            is_src_in_batch = any(
-                resolve_vault_path(s, root_resolved) == dest_file
-                for s in mapping.keys()
-            )
+            is_src_in_batch = any(resolve_vault_path(s, root_resolved) == dest_file for s in mapping.keys())
             if not is_src_in_batch:
                 raise LifecycleError(f"Batch move failed pre-flight: Destination already exists: '{dest_file}'")
 

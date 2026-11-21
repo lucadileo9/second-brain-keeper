@@ -72,7 +72,6 @@ class RedoConflictError(RedoError):
     """Raised when redo fails because a file was modified externally after reverting."""
 
 
-
 class DocumentError(SBKError):
     """Raised when parsing or manipulating a MarkdownDocument fails."""
 

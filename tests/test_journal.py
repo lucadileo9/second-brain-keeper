@@ -321,4 +321,3 @@ def test_redo_conflict_detection(mock_vault: Path) -> None:
 
     with pytest.raises(RedoConflictError, match="modified after being reverted"):
         journal.redo()
-

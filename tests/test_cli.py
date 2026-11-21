@@ -223,4 +223,3 @@ def test_cli_outside_vault_fails_with_exit_code_1(empty_temp_dir: Path, monkeypa
     assert code == 1
     captured = capsys.readouterr()
     assert "No Obsidian vault found" in captured.out or "No Obsidian vault found" in captured.err
-

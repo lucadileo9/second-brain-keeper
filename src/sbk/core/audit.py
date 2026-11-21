@@ -263,9 +263,7 @@ def run_phase_5_links(
             if not any(t_resolved == p or t_resolved in p.parents for p in paths):
                 continue
         paths_str = "\n".join(f"      * {p.relative_to(config.root_path).as_posix()}" for p in paths)
-        warnings.append(
-            f"Stem collision: '{stem}' e' ambiguo e risolve a molteplici file:\n{paths_str}"
-        )
+        warnings.append(f"Stem collision: '{stem}' e' ambiguo e risolve a molteplici file:\n{paths_str}")
 
     # 3. Orphan attachments
     orphans = find_orphan_attachments(catalog, config)
@@ -350,4 +348,3 @@ def run_audit(
         total_issues=total_issues,
         health_score=score,
     )
-

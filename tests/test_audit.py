@@ -99,4 +99,3 @@ def test_audit_multiline_stem_collision(mock_vault: Path) -> None:
     assert "e' ambiguo e risolve a molteplici file:" in collision_warns[0]
     assert "* 10-19_Progetti/Progetto_Alpha.md" in collision_warns[0]
     assert "* 20-29_Aree/Progetto_Alpha.md" in collision_warns[0]
-

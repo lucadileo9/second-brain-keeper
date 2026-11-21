@@ -92,9 +92,7 @@ def register_maintenance_parsers(subparsers: argparse._SubParsersAction) -> None
         default=[],
         help="Output path for master MOC markdown note or exports. Can be specified multiple times.",
     )
-    map_parser.add_argument(
-        "--format", type=str, default="md", choices=["md", "json", "yaml"], help="Output format."
-    )
+    map_parser.add_argument("--format", type=str, default="md", choices=["md", "json", "yaml"], help="Output format.")
 
     # sbk sandbox
     sandbox_parser = subparsers.add_parser("sandbox", help="Manage isolated testing sandbox environments.")

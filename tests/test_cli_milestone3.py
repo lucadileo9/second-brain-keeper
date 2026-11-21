@@ -193,9 +193,7 @@ def test_cli_milestone3_edge_cases_and_formats(mock_vault_with_config: Path, cap
     # 7. repeatable -o exports to multiple files
     out_json = mock_vault_with_config / "telemetry.json"
     out_yaml = mock_vault_with_config / "telemetry.yaml"
-    code_multi_out = main(
-        ["--root", root_str, "-q", "graph-health", "-o", str(out_json), "-o", str(out_yaml)]
-    )
+    code_multi_out = main(["--root", root_str, "-q", "graph-health", "-o", str(out_json), "-o", str(out_yaml)])
     assert code_multi_out == 0
     assert out_json.exists()
     assert out_yaml.exists()
@@ -203,7 +201,5 @@ def test_cli_milestone3_edge_cases_and_formats(mock_vault_with_config: Path, cap
     assert "total_nodes:" in out_yaml.read_text(encoding="utf-8")
 
     # 8. Hierarchical graph-health export to CSV raises error and returns exit code 1
-    code_csv_fail = main(
-        ["--root", root_str, "graph-health", "-o", str(mock_vault_with_config / "fail.csv")]
-    )
+    code_csv_fail = main(["--root", root_str, "graph-health", "-o", str(mock_vault_with_config / "fail.csv")])
     assert code_csv_fail != 0

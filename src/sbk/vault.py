@@ -24,7 +24,7 @@ from .core.frontmatter import (
     update_frontmatter,
 )
 from .core.graph import GraphTelemetry
-from .core.indices import IndexManager, write_folder_index
+from .core.indices import IndexManager
 from .core.journal import TransactionJournal
 from .core.lifecycle import (
     archive_item,
@@ -44,12 +44,8 @@ from .core.traversal import build_vault_catalog, walk_vault_directories
 from .exceptions import (
     CreationError,
     FrontmatterError,
-    RedoConflictError,
-    RedoError,
     SBKError,
     TaxonomyError,
-    UndoConflictError,
-    UndoError,
     VaultNotFoundError,
 )
 from .models import (
@@ -226,11 +222,7 @@ class Vault:
             dirs_to_index.extend(walk_vault_directories(self.config, target_dir=base_dir))
 
         target_name = base_dir.name if base_dir != self.root else "vault"
-        desc = (
-            f"Generate indices recursively for {target_name}"
-            if recursive
-            else f"Generate indices for {target_name}"
-        )
+        desc = f"Generate indices recursively for {target_name}" if recursive else f"Generate indices for {target_name}"
 
         if dry_run:
             for d in dirs_to_index:
@@ -239,9 +231,7 @@ class Vault:
         else:
             with self.journal.begin_transaction("generate-indices", desc) as tx:
                 for d in dirs_to_index:
-                    idx_path, changed = mgr.rebuild_index(
-                        d, catalog=self.catalog, transaction=tx, dry_run=False
-                    )
+                    idx_path, changed = mgr.rebuild_index(d, catalog=self.catalog, transaction=tx, dry_run=False)
                     results.append((idx_path, changed))
             self.refresh()
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from sbk.cli.main import main
-from sbk.core.sandbox import get_default_sandbox_path, init_sandbox, reset_sandbox
+from sbk.core.sandbox import init_sandbox, reset_sandbox
 
 
 def test_sandbox_init_nominal_and_force(empty_temp_dir: Path) -> None:

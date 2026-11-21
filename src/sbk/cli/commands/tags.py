@@ -4,7 +4,7 @@ import logging
 from argparse import Namespace
 
 from ...exceptions import TaxonomyError, VaultKeeperError
-from ...utils.formatters import ReportWriter, format_output
+from ...utils.formatters import ReportWriter
 from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
 

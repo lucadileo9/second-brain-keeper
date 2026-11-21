@@ -158,4 +158,3 @@ def test_outside_vault_without_root_raises_error(empty_temp_dir: Path, monkeypat
     monkeypatch.chdir(isolated_dir)
     with pytest.raises(VaultNotFoundError, match="No Obsidian vault found"):
         load_vault_config(root_path=None)
-
