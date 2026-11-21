@@ -97,17 +97,19 @@ def test_template_engine_discovery_and_resolution(temp_vault: Path) -> None:
     assert "Template_Progetto.md" in templates
     assert "00_Tassonomia_Tag.md" in templates
 
-    # Resolution by exact name, stem, or with Template_ prefix
+    # Resolution by exact name or stem (without magic prefixing)
     p1 = engine.resolve_template_path("Template_Progetto.md")
     assert p1 is not None and p1.name == "Template_Progetto.md"
 
     p2 = engine.resolve_template_path("Template_Progetto")
     assert p2 is not None and p2.name == "Template_Progetto.md"
 
-    p3 = engine.resolve_template_path("progetto")
-    assert p3 is not None and p3.name == "Template_Progetto.md"
+    # Magic prefixing removed: 'progetto' does NOT match 'Template_Progetto.md'
+    with pytest.raises(TemplateError) as exc_info:
+        engine.resolve_template_path("progetto")
+    assert "progetto" in str(exc_info.value)
 
-    # None returns None
+    # None returns None (Tier 3 fallback) when default_template is not configured
     assert engine.resolve_template_path(None) is None
     assert engine.resolve_template_path("") is None
 
@@ -117,8 +119,29 @@ def test_template_engine_discovery_and_resolution(temp_vault: Path) -> None:
     assert "Nonexistent_Template" in str(exc_info.value)
 
 
+def test_template_engine_tier2_configured_default(temp_vault: Path) -> None:
+    """Test Tier 2 template resolution using configured default_template."""
+    config = load_vault_config(root_path=temp_vault)
+    config.default_template = "Template_Progetto.md"
+    engine = TemplateEngine(config)
+
+    # When template is None, falls back to config.default_template
+    resolved = engine.resolve_template_path(None)
+    assert resolved is not None and resolved.name == "Template_Progetto.md"
+
+    # Explicit template still takes precedence over default_template
+    resolved_explicit = engine.resolve_template_path("Template_Progetto")
+    assert resolved_explicit is not None and resolved_explicit.name == "Template_Progetto.md"
+
+    # When configured default template does not exist, raises TemplateError
+    config.default_template = "Template_Non_Esistente.md"
+    with pytest.raises(TemplateError) as exc_info:
+        engine.resolve_template_path(None)
+    assert "Template_Non_Esistente.md" in str(exc_info.value)
+
+
 def test_template_engine_default_templates(temp_vault: Path) -> None:
-    """Test built-in fallback templates for standard types."""
+    """Test built-in fallback minimal 4-line scaffold for all types."""
     config = load_vault_config(root_path=temp_vault)
     engine = TemplateEngine(config)
 
@@ -126,6 +149,10 @@ def test_template_engine_default_templates(temp_vault: Path) -> None:
         tmpl = engine.get_default_template(tipo)
         assert f"tipo: {tipo.capitalize() if tipo != 'Custom' else tipo}" in tmpl
         assert "# {{title}}" in tmpl
+        # Verify hardcoded Italian sections have been eliminated
+        assert "Note e Concetti Chiave" not in tmpl
+        assert "Obiettivi e Deliverable" not in tmpl
+        assert "formato: libro" not in tmpl
 
 
 def test_template_engine_render_variables(temp_vault: Path) -> None:

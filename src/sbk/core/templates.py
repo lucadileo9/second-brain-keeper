@@ -76,144 +76,110 @@ class TemplateEngine:
             return []
         return sorted([p.name for p in tmpl_dir.glob("*.md") if not p.name.startswith(".")])
 
-    def find_template(self, template_name_or_tipo: Optional[str]) -> Optional[Path]:
-        """Attempt to locate a template by name, tipo, or path, returning None if not found."""
-        if template_name_or_tipo is None or not template_name_or_tipo.strip():
+    def find_template(self, template_name_or_path: Optional[str]) -> Optional[Path]:
+        """Attempt to locate a template by explicit name, filename, or path.
+
+        Checks:
+        1. Direct filesystem path (cwd-relative or absolute).
+        2. Vault-root-relative path.
+        3. File in the active templates folder matching target name or target + '.md'.
+        4. Case-insensitive filename or stem match in templates folder.
+
+        Returns None if not found.
+        """
+        if template_name_or_path is None or not template_name_or_path.strip():
             return None
 
-        target = template_name_or_tipo.strip()
+        target = template_name_or_path.strip()
 
-        # Check explicit path
+        # 1. Direct filesystem path (cwd-relative or absolute)
         p_explicit = Path(target)
         if p_explicit.is_file():
             return p_explicit.resolve()
+
+        # 2. Vault-root-relative path
         p_vault_explicit = (self.config.root_path / p_explicit).resolve()
         if p_vault_explicit.is_file():
             return p_vault_explicit
 
+        # 3. Check inside templates_folder
         tmpl_dir = self.get_templates_folder()
         if not tmpl_dir or not tmpl_dir.is_dir():
             return None
 
-        # Inspect real directory entries to preserve authentic filesystem casing
-        actual_files = [p for p in tmpl_dir.glob("*.md") if not p.name.startswith(".")]
+        candidate = tmpl_dir / target
+        if candidate.is_file():
+            return candidate.resolve()
 
-        # 1. Exact case match
-        for p in actual_files:
-            if p.name == target or p.name == f"{target}.md" or p.name == f"Template_{target}.md":
-                return p.resolve()
+        if not target.endswith(".md"):
+            candidate_md = tmpl_dir / f"{target}.md"
+            if candidate_md.is_file():
+                return candidate_md.resolve()
 
-        # 2. Case-insensitive stem matching
+        # 4. Case-insensitive match in tmpl_dir
         target_lower = target.lower()
-        if target_lower.endswith(".md"):
-            target_lower = target_lower[:-3]
-
-        for p in actual_files:
-            p_stem_lower = p.stem.lower()
-            if (
-                p_stem_lower == target_lower
-                or p_stem_lower == f"template_{target_lower}"
-                or p.name.lower() == f"{target_lower}.md"
-            ):
+        target_stem = target_lower[:-3] if target_lower.endswith(".md") else target_lower
+        for p in tmpl_dir.glob("*.md"):
+            if p.name.startswith("."):
+                continue
+            if p.name.lower() == target_lower or p.stem.lower() == target_stem:
                 return p.resolve()
 
         return None
 
-    def resolve_template_path(self, template_name_or_tipo: Optional[str]) -> Optional[Path]:
-        """Resolve a template name, tipo, or path, raising TemplateError if not found.
+    def resolve_template_path(self, template: Optional[str] = None) -> Optional[Path]:
+        """Resolve a template path using deterministic 3-tier precedence.
+
+        Tier 1: Explicit CLI template argument (`template`).
+                If provided, resolves it; raises TemplateError if not found.
+        Tier 2: Configured default template (`self.config.default_template`).
+                If set in config, resolves it; raises TemplateError if not found.
+        Tier 3: None (caller falls back to universal code scaffold).
 
         Args:
-            template_name_or_tipo: Template name, tipo, or explicit path. If None, returns None.
+            template: Optional explicit template name or path.
 
         Returns:
-            Resolved Path of the template file, or None if none requested.
+            Resolved Path of the template file, or None if Tier 3 fallback applies.
 
         Raises:
-            TemplateError: If an explicit template name was specified but cannot be found.
+            TemplateError: If an explicit template or configured default cannot be found.
         """
-        if template_name_or_tipo is None or not template_name_or_tipo.strip():
-            return None
-
-        found = self.find_template(template_name_or_tipo)
-        if found is not None:
-            return found
-
         tmpl_dir = self.get_templates_folder()
-        raise TemplateError(
-            f"Template '{template_name_or_tipo.strip()}' not found in '{tmpl_dir}'. "
-            f"Available templates: {', '.join(self.list_templates()) or '(None)'}"
-        )
+
+        # Tier 1: Explicit CLI argument
+        if template is not None and template.strip():
+            found = self.find_template(template)
+            if found is not None:
+                return found
+            raise TemplateError(
+                f"Template '{template.strip()}' not found in '{tmpl_dir}'. "
+                f"Available templates: {', '.join(self.list_templates()) or '(None)'}"
+            )
+
+        # Tier 2: Configured default template
+        default_tmpl = self.config.default_template
+        if default_tmpl is not None and default_tmpl.strip():
+            found_default = self.find_template(default_tmpl)
+            if found_default is not None:
+                return found_default
+            raise TemplateError(
+                f"Configured default template '{default_tmpl.strip()}' not found in '{tmpl_dir}'. "
+                f"Available templates: {', '.join(self.list_templates()) or '(None)'}"
+            )
+
+        # Tier 3: Universal code fallback (caller should use get_default_template)
+        return None
 
     def get_default_template(self, tipo: str) -> str:
-        """Generate built-in standard template content conforming to Vault governance rules."""
-        norm_tipo = tipo.strip().capitalize()
-
-        if norm_tipo == "Appunto":
-            return (
-                "---\n"
-                "tipo: Appunto\n"
-                "tags: []\n"
-                "---\n\n"
-                "# {{title}}\n\n"
-                "## Note e Concetti Chiave\n\n"
-                "## Riferimenti e Collegamenti\n"
-            )
-
-        if norm_tipo == "Contatto":
-            return (
-                "---\n"
-                "tipo: Contatto\n"
-                'azienda: ""\n'
-                'ruolo: ""\n'
-                "rapporto: da_contattare\n"
-                "tags: []\n"
-                "---\n\n"
-                "# {{title}}\n\n"
-                "## Informazioni di Contatto\n"
-                "- **Email:** \n"
-                "- **LinkedIn:** \n"
-                "- **Telefono:** \n\n"
-                "## Storico Conversazioni\n"
-            )
-
-        if norm_tipo == "Progetto":
-            return (
-                "---\n"
-                "tipo: Progetto\n"
-                "priorità: media\n"
-                "stato: attivo\n"
-                'scadenza: ""\n'
-                "tags: []\n"
-                "---\n\n"
-                "# {{title}}\n\n"
-                "## Obiettivi e Deliverable\n\n"
-                "## Task / Azioni da Fare\n"
-                "- [ ] \n\n"
-                "## Note e Risorse Collegate\n"
-            )
-
-        if norm_tipo == "Risorsa":
-            return (
-                "---\n"
-                "tipo: Risorsa\n"
-                "formato: libro\n"
-                'autore: ""\n'
-                "valutazione: 0\n"
-                "stato: da_iniziare\n"
-                "tags: []\n"
-                "---\n\n"
-                "# {{title}}\n\n"
-                "## Sintesi ed Estratto\n\n"
-                "## Note e Citazioni\n"
-            )
-
-        if norm_tipo == "Indice":
-            return "---\ntipo: Indice\ntags: []\n---\n\n# {{title}}\n\n## Sezioni\n"
-
-        if norm_tipo == "Sistema":
-            return "---\ntipo: Sistema\ntags: []\n---\n\n# {{title}}\n\n## Descrizione\n\n## Specifiche Tecniche\n"
-
-        return f"---\ntipo: {tipo}\ntags: []\n---\n\n# {{{{title}}}}\n"
+        """Generate an ultra-minimal, language-agnostic template scaffold."""
+        clean_tipo = tipo.strip().capitalize() if tipo and tipo.strip() else "Appunto"
+        if self.config and self.config.allowed_types:
+            for allowed in self.config.allowed_types:
+                if allowed.lower() == clean_tipo.lower():
+                    clean_tipo = allowed
+                    break
+        return f"---\ntipo: {clean_tipo}\ntags: []\n---\n\n# {{{{title}}}}\n"
 
     def render_template(
         self,

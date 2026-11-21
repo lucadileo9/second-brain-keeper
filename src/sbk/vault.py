@@ -852,20 +852,12 @@ class Vault:
 
         tmpl_engine = TemplateEngine(self.config)
         template_used: Optional[str] = None
-        if template:
-            template_path = tmpl_engine.resolve_template_path(template)
-            if template_path and template_path.is_file():
-                raw_tmpl = template_path.read_text(encoding="utf-8")
-                template_used = template_path.name
-            else:
-                raw_tmpl = tmpl_engine.get_default_template(effective_tipo)
+        template_path = tmpl_engine.resolve_template_path(template)
+        if template_path and template_path.is_file():
+            raw_tmpl = template_path.read_text(encoding="utf-8")
+            template_used = template_path.name
         else:
-            template_path = tmpl_engine.find_template(effective_tipo)
-            if template_path and template_path.is_file():
-                raw_tmpl = template_path.read_text(encoding="utf-8")
-                template_used = template_path.name
-            else:
-                raw_tmpl = tmpl_engine.get_default_template(effective_tipo)
+            raw_tmpl = tmpl_engine.get_default_template(effective_tipo)
 
         rendered_content = tmpl_engine.render_template(
             raw_content=raw_tmpl,
