@@ -123,3 +123,37 @@ def test_cli_search_word_flag(mock_vault_with_config: Path, capsys) -> None:
     captured = capsys.readouterr()
     assert "AI_Images" in captured.out
     assert "Email_Details" not in captured.out
+
+
+def test_search_result_sequence_protocol(mock_vault_with_config: Path) -> None:
+    """Verify SearchResult implements sequence protocol (__len__, __iter__, __getitem__, __bool__, __contains__)."""
+    v = Vault(mock_vault_with_config)
+    res = v.search()
+
+    # len
+    assert len(res) == len(res.items)
+    assert len(res) > 0
+
+    # iter
+    items_from_iter = list(res)
+    assert items_from_iter == res.items
+
+    # getitem index
+    first_item = res[0]
+    assert first_item == res.items[0]
+    assert res[-1] == res.items[-1]
+
+    # getitem slice
+    slice_items = res[0:2]
+    assert isinstance(slice_items, list)
+    assert slice_items == res.items[0:2]
+
+    # bool
+    assert bool(res) is True
+    empty_res = v.search(query="NonexistentTermZ999_ShouldNeverMatch")
+    assert len(empty_res) == 0
+    assert bool(empty_res) is False
+
+    # contains
+    assert first_item in res
+    assert "not-an-item" not in res
