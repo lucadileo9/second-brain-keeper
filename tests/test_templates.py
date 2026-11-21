@@ -384,3 +384,63 @@ def test_vault_create_in_custom_folder(temp_vault: Path) -> None:
     assert res.file_path.parent == (temp_vault / "20-29_Istruzione" / "Informatica").resolve()
     assert res.stem == "Architettura_Microservizi"
     assert (temp_vault / "20-29_Istruzione" / "Informatica" / "00_Indice_Informatica.md").resolve().is_file()
+
+
+def test_template_engine_render_with_body_placeholder(temp_vault: Path) -> None:
+    """Test variable interpolation when {{body}} placeholder is present."""
+    config = load_vault_config(root_path=temp_vault)
+    engine = TemplateEngine(config)
+
+    raw_tmpl = """---
+tipo: Appunto
+tags: []
+---
+# {{title}}
+
+## Sintesi
+{{body}}
+
+## Note
+"""
+    # 1. With body
+    rendered = engine.render_template(
+        raw_content=raw_tmpl,
+        title="Nota Con Body",
+        stem="Nota_Con_Body",
+        tipo="Appunto",
+        body="Contenuto iniettato nel placeholder.",
+    )
+    assert "# Nota Con Body" in rendered
+    assert "Contenuto iniettato nel placeholder." in rendered
+    assert "{{body}}" not in rendered
+
+    # 2. Without body (body=None) replaces placeholder with empty string
+    rendered_empty = engine.render_template(
+        raw_content=raw_tmpl,
+        title="Nota Senza Body",
+        stem="Nota_Senza_Body",
+        tipo="Appunto",
+        body=None,
+    )
+    assert "# Nota Senza Body" in rendered_empty
+    assert "{{body}}" not in rendered_empty
+
+
+def test_template_engine_render_with_body_append(temp_vault: Path) -> None:
+    """Test body appended cleanly when template has no {{body}} placeholder."""
+    config = load_vault_config(root_path=temp_vault)
+    engine = TemplateEngine(config)
+
+    raw_tmpl = engine.get_default_template("Appunto")
+    body_text = "## Sezione Libera\n\n- Punto 1\n- Punto 2"
+
+    rendered = engine.render_template(
+        raw_content=raw_tmpl,
+        title="Nota Append",
+        stem="Nota_Append",
+        tipo="Appunto",
+        body=body_text,
+    )
+    assert "# Nota Append" in rendered
+    assert "## Sezione Libera\n\n- Punto 1\n- Punto 2" in rendered
+    assert rendered.endswith("\n## Sezione Libera\n\n- Punto 1\n- Punto 2\n")

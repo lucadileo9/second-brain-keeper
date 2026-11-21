@@ -781,6 +781,7 @@ class Vault:
         folder: Optional[Union[str, Path]] = None,
         tags: Optional[List[str]] = None,
         template: Optional[str] = None,
+        body: Optional[str] = None,
         extra_vars: Optional[Dict[str, Any]] = None,
         dry_run: bool = False,
     ) -> CreateResult:
@@ -792,6 +793,7 @@ class Vault:
             folder: Optional folder path. If None, auto-routes via Johnny.Decimal.
             tags: Optional list of taxonomy tags.
             template: Optional template name or path.
+            body: Optional initial markdown body content to inject into the note.
             extra_vars: Optional custom interpolation variables.
             dry_run: If True, simulates creation without modifying filesystem.
 
@@ -866,6 +868,7 @@ class Vault:
             tipo=effective_tipo,
             tags=cleaned_tags,
             extra_vars=extra_vars,
+            body=body,
         )
 
         index_mgr = IndexManager(self.config)

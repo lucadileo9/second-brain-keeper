@@ -231,3 +231,110 @@ def test_cli_create_errors(cli_vault: Path, capsys: pytest.CaptureFixture) -> No
         ]
     )
     assert ret_err_tag == 1
+
+
+def test_cli_create_with_body(cli_vault: Path, capsys: pytest.CaptureFixture) -> None:
+    """Test sbk create with --body option."""
+    ret = main(
+        [
+            "--root",
+            str(cli_vault),
+            "create",
+            "Nota Con Testo Inline",
+            "--type",
+            "Appunto",
+            "--body",
+            "## Contenuto Inline\nQuesto è un testo inserito da riga di comando.",
+        ]
+    )
+    assert ret == 0
+    created_file = cli_vault / "00_Inbox" / "Nota_Con_Testo_Inline.md"
+    assert created_file.is_file()
+    content = created_file.read_text(encoding="utf-8")
+    assert "# Nota Con Testo Inline" in content
+    assert "## Contenuto Inline" in content
+    assert "Questo è un testo inserito da riga di comando." in content
+
+
+def test_cli_create_with_body_file(cli_vault: Path, tmp_path: Path) -> None:
+    """Test sbk create with --body-file option."""
+    source_file = tmp_path / "source_draft.md"
+    source_file.write_text("## Testo da File Sorgente\nParagrafo importato con successo.\n", encoding="utf-8")
+
+    ret = main(
+        [
+            "--root",
+            str(cli_vault),
+            "create",
+            "Nota Da File",
+            "--type",
+            "Appunto",
+            "--body-file",
+            str(source_file),
+        ]
+    )
+    assert ret == 0
+    created_file = cli_vault / "00_Inbox" / "Nota_Da_File.md"
+    assert created_file.is_file()
+    content = created_file.read_text(encoding="utf-8")
+    assert "# Nota Da File" in content
+    assert "## Testo da File Sorgente" in content
+    assert "Paragrafo importato con successo." in content
+
+
+def test_cli_create_body_file_errors(cli_vault: Path, tmp_path: Path) -> None:
+    """Test sbk create with invalid --body-file (nonexistent, binary, too large)."""
+    # Nonexistent file
+    ret_nonexistent = main(
+        [
+            "--root",
+            str(cli_vault),
+            "create",
+            "Nota File Inesistente",
+            "--type",
+            "Appunto",
+            "--body-file",
+            str(tmp_path / "nonexistent.txt"),
+        ]
+    )
+    assert ret_nonexistent == 1
+
+    # Binary file with null bytes
+    bin_file = tmp_path / "binary_data.bin"
+    bin_file.write_bytes(b"Header\x00BinaryContent\xff")
+    ret_bin = main(
+        [
+            "--root",
+            str(cli_vault),
+            "create",
+            "Nota File Binario",
+            "--type",
+            "Appunto",
+            "--body-file",
+            str(bin_file),
+        ]
+    )
+    assert ret_bin == 1
+
+
+def test_cli_create_mutually_exclusive_body(cli_vault: Path, tmp_path: Path) -> None:
+    """Test sbk create fails when both --body and --body-file are specified."""
+    dummy_file = tmp_path / "dummy.txt"
+    dummy_file.write_text("Test", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "--root",
+                str(cli_vault),
+                "create",
+                "Nota Conflitto",
+                "--type",
+                "Appunto",
+                "--body",
+                "Inline body",
+                "--body-file",
+                str(dummy_file),
+            ]
+        )
+    assert exc_info.value.code != 0

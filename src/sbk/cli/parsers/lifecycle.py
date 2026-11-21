@@ -47,6 +47,19 @@ def register_lifecycle_parsers(subparsers: argparse._SubParsersAction) -> None:
         choices=["md", "json", "yaml", "csv"],
         help="Output format (default: md).",
     )
+    body_group = create_parser.add_mutually_exclusive_group(required=False)
+    body_group.add_argument(
+        "--body",
+        type=str,
+        default=None,
+        help="Initial markdown body text to inject into the note.",
+    )
+    body_group.add_argument(
+        "--body-file",
+        type=str,
+        default=None,
+        help="Path to an existing UTF-8 text file whose content will be injected into the note body.",
+    )
 
     # sbk rename
     rename_parser = subparsers.add_parser("rename", help="Rename a note or asset with global wikilink refactoring.")

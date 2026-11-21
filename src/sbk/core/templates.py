@@ -189,11 +189,12 @@ class TemplateEngine:
         tipo: str,
         tags: Optional[List[str]] = None,
         extra_vars: Optional[Dict[str, Any]] = None,
+        body: Optional[str] = None,
     ) -> str:
         """Interpolate variables and enforce strictly valid frontmatter schema.
 
         Supported variables:
-            {{title}}, {{stem}}, {{tipo}}, {{type}}, {{date}}, {{time}}, {{datetime}}
+            {{title}}, {{stem}}, {{tipo}}, {{type}}, {{date}}, {{time}}, {{datetime}}, {{body}}
             and any keys passed in extra_vars.
 
         Args:
@@ -203,6 +204,7 @@ class TemplateEngine:
             tipo: Note classification type.
             tags: List of validated taxonomy tags.
             extra_vars: Optional dictionary of additional template variables.
+            body: Optional initial markdown body content to inject.
 
         Returns:
             Rendered Markdown text with frontmatter and body.
@@ -217,6 +219,10 @@ class TemplateEngine:
             "time": now.strftime("%H:%M"),
             "datetime": now.isoformat(timespec="seconds"),
         }
+
+        has_body_placeholder = bool(re.search(r"\{\{\s*body\s*\}\}", raw_content, re.IGNORECASE))
+        if has_body_placeholder:
+            context["body"] = body.strip() if body else ""
 
         if extra_vars:
             for k, v in extra_vars.items():
@@ -235,6 +241,14 @@ class TemplateEngine:
         # Parse document to normalize and enforce frontmatter
         doc = MarkdownDocument.from_content(interpolated)
         doc.tipo = tipo
+
+        # If template did not have a {{body}} placeholder and body was provided, append it cleanly
+        if not has_body_placeholder and body and body.strip():
+            clean_body = body.strip()
+            if doc.body.strip():
+                doc.body = f"{doc.body.rstrip()}\n\n{clean_body}\n"
+            else:
+                doc.body = f"\n\n{clean_body}\n"
 
         if tags is not None:
             doc.set_frontmatter_field("tags", list(tags))

@@ -2,6 +2,7 @@
 
 import logging
 from argparse import Namespace
+from pathlib import Path
 from typing import List, Optional
 
 from ...exceptions import CreationError, TaxonomyError, TemplateError, VaultKeeperError
@@ -23,6 +24,40 @@ def handle_create(args: Namespace, logger: logging.Logger) -> int:
     template = getattr(args, "template", None)
     dry_run = getattr(args, "dry_run", False)
     fmt = getattr(args, "format", "md")
+    raw_body = getattr(args, "body", None)
+    body_file = getattr(args, "body_file", None)
+
+    body: Optional[str] = None
+    if raw_body is not None:
+        body = raw_body
+    elif body_file is not None:
+        file_path = Path(body_file)
+        if not file_path.is_file():
+            logger.error("Creation failed: Body file '%s' does not exist or is not a file.", file_path)
+            return EXIT_ERROR
+
+        # Enforce max file size of 5 MB to prevent vault corruption/bloat
+        max_size_bytes = 5 * 1024 * 1024
+        if file_path.stat().st_size > max_size_bytes:
+            logger.error(
+                "Creation failed: Body file '%s' exceeds maximum allowed size of 5 MB (%d bytes).",
+                file_path,
+                file_path.stat().st_size,
+            )
+            return EXIT_ERROR
+
+        try:
+            raw_bytes = file_path.read_bytes()
+            if b"\x00" in raw_bytes:
+                logger.error("Creation failed: Body file '%s' contains binary null bytes.", file_path)
+                return EXIT_ERROR
+            body = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            logger.error("Creation failed: Body file '%s' is not valid UTF-8 text: %s", file_path, exc)
+            return EXIT_ERROR
+        except Exception as exc:
+            logger.error("Creation failed: Error reading body file '%s': %s", file_path, exc)
+            return EXIT_ERROR
 
     tags_list: Optional[List[str]] = None
     if raw_tags:
@@ -35,6 +70,7 @@ def handle_create(args: Namespace, logger: logging.Logger) -> int:
             folder=folder,
             tags=tags_list,
             template=template,
+            body=body,
             dry_run=dry_run,
         )
     except (CreationError, TaxonomyError, TemplateError, VaultKeeperError) as exc:
