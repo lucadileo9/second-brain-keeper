@@ -1,0 +1,80 @@
+name: Feature Request
+description: Suggest a new functionality or enhancement for Second Brain Keeper
+title: "[FEATURE] "
+labels: ["enhancement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion! Describe the feature or improvement you'd like to see in Second Brain Keeper.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to Solve
+      description: What problem or limitation would this feature solve?
+      placeholder: "Managing large attachments / cross-folder link refactoring is difficult when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like it to work?
+      placeholder: "Introduce a new CLI command or Facade method that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered alternative solutions or workarounds?
+      placeholder: "A manual script or external Obsidian plugin could be used, but..."
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Usage Examples
+      description: Show how you would use this feature via CLI or Python SDK.
+      render: python
+      placeholder: |
+        # CLI example:
+        # vk my-feature --option value
+
+        # Python SDK example:
+        from sbk import Vault
+
+        vault = Vault(root_path="~/Vault")
+        result = vault.my_new_feature()
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to your workflow?
+      options:
+        - "Nice to have"
+        - "Important"
+        - "Critical"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am available to work on this feature
+        - label: I can help with documentation
+        - label: I can help with testing
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Other useful information, references, or mockups.
+      placeholder: "Links, markdown snippets, screenshots..."
