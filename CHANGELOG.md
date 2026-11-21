@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-11-21
+
+### Added
+- **Initial Body Injection for Note Creation**: Added mutually exclusive `--body` and `--body-file` options to `sbk create`. Supports `{{body}}` placeholder substitution in templates as well as clean double-newline append fallback. Validates UTF-8 encoding, rejects binary null bytes, and enforces a 5 MB maximum file size limit.
+- **Configurable Default Template**: Added `default_template` under `[templates]` section in `vault.toml` to support Tier 2 template resolution.
+
+### Changed
+- **Deterministic 3-Tier Template Resolution**: Completely refactored template discovery in `TemplateEngine.resolve_template_path()` to follow a strict deterministic precedence:
+  1. CLI explicit argument (`--template`)
+  2. Configured default template (`[templates].default_template`)
+  3. Universal language-agnostic code scaffold
+- **Language-Agnostic Code Scaffold**: Replaced hardcoded Italian template strings in `get_default_template()` with an ultra-minimal 4-line scaffold containing only normalized YAML frontmatter and note title.
+- **Eliminated Magic Matching**: Removed implicit note-type guessing and prefix prepending (`Template_{tipo}`) in template resolution.
+
 ## [2.0.0] - 2026-11-21
 
 ### Added
