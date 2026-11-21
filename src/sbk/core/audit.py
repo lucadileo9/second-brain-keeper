@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
 
 from ..models import AuditReport, PhaseResult, VaultCatalog, VaultConfig
+from ..utils.helpers import resolve_vault_path
 from .attachments import find_heavy_files, find_orphan_attachments
 from .frontmatter import (
     extract_inline_tags,
@@ -32,7 +33,7 @@ def _get_target_files(
                 filter_extensions=filter_extensions,
             )
         )
-    p = target_path.resolve()
+    p = resolve_vault_path(target_path, config.root_path)
     if p.is_file():
         if filter_extensions and extensions and p.suffix.lower() not in extensions:
             return []
@@ -73,7 +74,7 @@ def run_phase_1_storage(
     heavy_files = find_heavy_files(catalog, config)
     for hf, size in heavy_files:
         if target_path:
-            t_resolved = target_path.resolve()
+            t_resolved = resolve_vault_path(target_path, config.root_path)
             if t_resolved.is_file() and hf != t_resolved:
                 continue
             if t_resolved.is_dir() and t_resolved not in hf.parents and t_resolved != hf:
@@ -259,7 +260,7 @@ def run_phase_5_links(
     collisions = find_stem_collisions(catalog)
     for stem, paths in collisions.items():
         if target_path:
-            t_resolved = target_path.resolve()
+            t_resolved = resolve_vault_path(target_path, config.root_path)
             if not any(t_resolved == p or t_resolved in p.parents for p in paths):
                 continue
         paths_str = "\n".join(f"      * {p.relative_to(config.root_path).as_posix()}" for p in paths)
@@ -269,7 +270,7 @@ def run_phase_5_links(
     orphans = find_orphan_attachments(catalog, config)
     for o in orphans:
         if target_path:
-            t_resolved = target_path.resolve()
+            t_resolved = resolve_vault_path(target_path, config.root_path)
             if t_resolved.is_file() and o.file_path != t_resolved:
                 continue
             if t_resolved.is_dir() and t_resolved not in o.file_path.parents and t_resolved != o.file_path:
@@ -324,7 +325,7 @@ def run_audit(
     catalog = build_vault_catalog(config)
     selected_phases = phases_to_run or [1, 2, 3, 4, 5]
     results: List[PhaseResult] = []
-    target_p = Path(target).resolve() if target else None
+    target_p = resolve_vault_path(target, config.root_path) if target else None
 
     if 1 in selected_phases:
         results.append(run_phase_1_storage(config, catalog, target_path=target_p))
