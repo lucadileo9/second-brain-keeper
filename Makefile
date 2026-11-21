@@ -1,10 +1,20 @@
-# Variables
-PYTHON = python3
+# Environment detection: respects activated VIRTUAL_ENV or defaults to .venv
+VENV ?= $(if $(VIRTUAL_ENV),$(VIRTUAL_ENV),.venv)
+
+ifeq ($(wildcard $(VENV)/bin/python3),)
+    PYTHON ?= python3
+    RUFF ?= ruff
+    MYPY ?= mypy
+    TOX ?= tox
+else
+    PYTHON ?= $(VENV)/bin/python3
+    RUFF ?= $(VENV)/bin/ruff
+    MYPY ?= $(VENV)/bin/mypy
+    TOX ?= $(if $(wildcard $(VENV)/bin/tox),$(VENV)/bin/tox,tox)
+endif
+
 PIP = $(PYTHON) -m pip
 PYTEST = $(PYTHON) -m pytest
-RUFF = ruff
-MYPY = mypy
-TOX = tox
 
 .PHONY: help install install-dev test lint format typecheck all build clean tox
 
