@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Union, overload
 
 
 @dataclass(frozen=True)
@@ -119,6 +119,32 @@ class SearchResult:
     filters: Dict[str, Any]
     items: List[SearchResultItem]
     total_matches: int
+
+    def __len__(self) -> int:
+        """Return the count of matching items."""
+        return len(self.items)
+
+    def __iter__(self) -> Iterator[SearchResultItem]:
+        """Iterate over matching search result items."""
+        return iter(self.items)
+
+    @overload
+    def __getitem__(self, index: int) -> SearchResultItem: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> List[SearchResultItem]: ...
+
+    def __getitem__(self, index: Union[int, slice]) -> Union[SearchResultItem, List[SearchResultItem]]:
+        """Support indexing and slicing directly on search results."""
+        return self.items[index]
+
+    def __bool__(self) -> bool:
+        """Return True if any matching items were found."""
+        return bool(self.items)
+
+    def __contains__(self, item: Any) -> bool:
+        """Check if an item is present in search result items."""
+        return item in self.items
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert search results to serializable dictionary."""

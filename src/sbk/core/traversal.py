@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Iterator, Optional, Set
 
 from ..models import VaultCatalog, VaultConfig
+from ..utils.helpers import resolve_vault_path
 
 
 def is_ignored_path(path: Path, ignored_folders: Set[str]) -> bool:
@@ -26,7 +27,7 @@ def walk_vault_files(
     Recursively scans directory tree while pruning ignored folders and hidden directories.
     If filter_extensions is False, yields all files regardless of extension.
     """
-    root = (target_dir or config.root_path).resolve()
+    root = resolve_vault_path(target_dir, config.root_path) if target_dir else config.root_path.resolve()
     allowed_exts = extensions or config.allowed_extensions
 
     for dirpath_str, dirnames, filenames in os.walk(root):
@@ -52,7 +53,7 @@ def walk_vault_directories(
     target_dir: Optional[Path] = None,
 ) -> Iterator[Path]:
     """Yield all non-ignored directory paths in the vault or target directory."""
-    root = (target_dir or config.root_path).resolve()
+    root = resolve_vault_path(target_dir, config.root_path) if target_dir else config.root_path.resolve()
 
     for dirpath_str, dirnames, _ in os.walk(root):
         # Prune ignored directories in-place

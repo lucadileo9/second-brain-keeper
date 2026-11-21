@@ -71,6 +71,13 @@ def register_maintenance_parsers(subparsers: argparse._SubParsersAction) -> None
     search_parser.add_argument("--links-to", type=str, default=None, help="Filter notes linking to target stem.")
     search_parser.add_argument("--folder", type=str, default=None, help="Restrict search to a folder path.")
     search_parser.add_argument(
+        "-w",
+        "--word",
+        action="store_true",
+        dest="word",
+        help="Match whole words only (prevents false positives on short acronyms like AI, DB, OS).",
+    )
+    search_parser.add_argument(
         "--format", type=str, default="md", choices=["md", "json", "yaml", "csv"], help="Output format."
     )
     search_parser.add_argument(

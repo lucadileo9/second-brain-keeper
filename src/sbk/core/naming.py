@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Set, Tuple
 
 from ..models import VaultCatalog, VaultConfig
+from ..utils.helpers import resolve_vault_path
 from .traversal import walk_vault_files
 
 
@@ -172,7 +173,7 @@ def batch_normalize(
     wl_engine = WikilinkEngine(config)
 
     results: List[Tuple[Path, Path, int]] = []
-    root = target_dir or config.root_path
+    root = resolve_vault_path(target_dir, config.root_path) if target_dir else config.root_path
 
     # First normalize files
     for file_path in list(walk_vault_files(config, target_dir=root, extensions=None)):

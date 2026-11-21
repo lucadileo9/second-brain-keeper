@@ -68,6 +68,7 @@ from .models import (
     VaultConfig,
     VaultMapReport,
 )
+from .utils.helpers import resolve_vault_path
 
 
 class Vault:
@@ -120,7 +121,7 @@ class Vault:
         target: Optional[Union[str, Path]] = None,
     ) -> List[BrokenLink]:
         """Scan notes for unresolved wikilinks or media embeds."""
-        target_path = Path(target).resolve() if target else None
+        target_path = resolve_vault_path(target, self.root) if target else None
         return scan_broken_links(self.catalog, self.config, target_file_or_dir=target_path)
 
     def stem_collisions(self) -> Dict[str, List[Path]]:
@@ -132,7 +133,7 @@ class Vault:
         target: Optional[Union[str, Path]] = None,
     ) -> List[OrphanAttachment]:
         """Find media or attachment files not referenced by any markdown note."""
-        target_path = Path(target).resolve() if target else None
+        target_path = resolve_vault_path(target, self.root) if target else None
         return find_orphan_attachments(self.catalog, self.config, target_dir=target_path)
 
     def find_heavy_files(self) -> List[Tuple[Path, int]]:
@@ -183,7 +184,7 @@ class Vault:
 
         Returns list of tuples: (old_path, new_path, updated_links_count)
         """
-        target_path = Path(target).resolve() if target else None
+        target_path = resolve_vault_path(target, self.root) if target else None
         if dry_run:
             return batch_normalize(self.catalog, self.config, target_dir=target_path, dry_run=True)
 
@@ -211,7 +212,7 @@ class Vault:
         Returns list of tuples: (index_path, was_created_or_modified)
         """
         results: List[Tuple[Path, bool]] = []
-        base_dir = Path(target).resolve() if target else self.root
+        base_dir = resolve_vault_path(target, self.root) if target else self.root
 
         if not base_dir.is_dir():
             raise VaultNotFoundError(f"Target is not a directory: {base_dir}")
@@ -239,7 +240,7 @@ class Vault:
 
     def get_note(self, file_path: Union[str, Path]) -> Note:
         """Read and parse a Markdown note from the vault."""
-        p = Path(file_path).resolve()
+        p = resolve_vault_path(file_path, self.root)
         return read_note(p, self.root, type_field=self.config.type_field)
 
     def set_frontmatter_type(
@@ -249,7 +250,7 @@ class Vault:
         dry_run: bool = False,
     ) -> bool:
         """Update or insert the tipo field in a note's frontmatter."""
-        note_path = Path(target).resolve()
+        note_path = resolve_vault_path(target, self.root)
         if not note_path.is_file():
             raise FrontmatterError(f"Note not found: {note_path}")
 
@@ -285,7 +286,7 @@ class Vault:
         dry_run: bool = False,
     ) -> bool:
         """Add or overwrite tags in a note's YAML frontmatter."""
-        note_path = Path(target).resolve()
+        note_path = resolve_vault_path(target, self.root)
         if not note_path.is_file():
             raise FrontmatterError(f"Note not found: {note_path}")
 
@@ -432,7 +433,7 @@ class Vault:
         dry_run: bool = False,
     ) -> RenameResult:
         """Rename a note or asset with global wikilink refactoring and index synchronization."""
-        source_p = Path(old_path).resolve()
+        source_p = resolve_vault_path(old_path, self.root)
         idx_mgr = IndexManager(self.config)
         link_engine = WikilinkEngine(self.config)
 
@@ -511,8 +512,8 @@ class Vault:
         dry_run: bool = False,
     ) -> MoveResult:
         """Move a file or folder into a different Johnny.Decimal directory."""
-        source_p = Path(source_path).resolve()
-        dest_p = Path(dest_folder).resolve()
+        source_p = resolve_vault_path(source_path, self.root)
+        dest_p = resolve_vault_path(dest_folder, self.root)
         idx_mgr = IndexManager(self.config)
 
         if dry_run:
@@ -576,7 +577,7 @@ class Vault:
         dry_run: bool = False,
     ) -> ArchiveResult:
         """Archive a note or project folder to mirror cold storage with Tombstone support."""
-        item_p = Path(item_path).resolve()
+        item_p = resolve_vault_path(item_path, self.root)
         idx_mgr = IndexManager(self.config)
 
         if dry_run:
@@ -751,10 +752,18 @@ class Vault:
         tipo: Optional[str] = None,
         links_to: Optional[str] = None,
         folder: Optional[Union[str, Path]] = None,
+        word_match: bool = False,
     ) -> SearchResult:
         """Search notes in the vault matching combined criteria."""
         engine = SearchEngine(self.config, self.catalog)
-        return engine.search(query=query, tag=tag, tipo=tipo, links_to=links_to, folder=folder)
+        return engine.search(
+            query=query,
+            tag=tag,
+            tipo=tipo,
+            links_to=links_to,
+            folder=folder,
+            word_match=word_match,
+        )
 
     def graph_health(self) -> GraphHealthReport:
         """Execute non-punitive topological graph diagnostics."""

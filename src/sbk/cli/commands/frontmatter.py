@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from argparse import Namespace
-from pathlib import Path
 
 from ...core.frontmatter import (
     parse_note_content,
@@ -12,6 +11,7 @@ from ...core.frontmatter import (
 )
 from ...core.traversal import walk_vault_files
 from ...exceptions import FrontmatterError, VaultKeeperError
+from ...utils.helpers import resolve_vault_path
 from ...vault import Vault
 from ..common import get_vault
 from ..constants import EXIT_ERROR, EXIT_SUCCESS
@@ -77,7 +77,7 @@ def handle_set_type(args: Namespace, logger: logging.Logger, v: Vault) -> int:
         logger.error("Specify both --target and --type, or use --batch <file.json>.")
         return EXIT_ERROR
 
-    target_path = Path(target).resolve()
+    target_path = resolve_vault_path(target, v.root)
     try:
         changed = v.set_frontmatter_type(target_path, new_type, dry_run=dry_run)
     except (FrontmatterError, VaultKeeperError) as exc:
@@ -133,7 +133,7 @@ def handle_add_tags(args: Namespace, logger: logging.Logger, v: Vault) -> int:
         logger.error("Specify both --target and --tags, or use --batch <file.json>.")
         return EXIT_ERROR
 
-    target_path = Path(target).resolve()
+    target_path = resolve_vault_path(target, v.root)
     changed = v.add_frontmatter_tags(target_path, tags, overwrite=overwrite, dry_run=dry_run)
 
     if changed:
@@ -150,7 +150,7 @@ def handle_sanitize_tags(args: Namespace, logger: logging.Logger, v: Vault) -> i
     target = getattr(args, "target", None)
     prefix = "[DRY-RUN] " if dry_run else ""
 
-    target_dir = Path(target).resolve() if target else v.root
+    target_dir = resolve_vault_path(target, v.root) if target else v.root
     replacements = v.config.tag_replacements
     logger.info("%sSanitizing tags across notes in: %s", prefix, target_dir)
 

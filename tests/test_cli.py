@@ -68,6 +68,36 @@ def test_cli_audit(mock_vault: Path) -> None:
     assert log_file.is_file()
 
 
+def test_cli_relative_target_from_external_cwd(mock_vault: Path, monkeypatch, tmp_path: Path) -> None:
+    """Verify CLI commands with relative --target resolve against --root when CWD is outside."""
+    monkeypatch.chdir(tmp_path)
+
+    # Audit clean note using relative target
+    code = main(
+        [
+            "--root",
+            str(mock_vault),
+            "audit",
+            "--target",
+            "10-19_Progetti/Progetto_Alpha.md",
+        ]
+    )
+    assert code == 0
+
+    # Generate indices dry-run using relative target
+    code_idx = main(
+        [
+            "--root",
+            str(mock_vault),
+            "generate-indices",
+            "--target",
+            "10-19_Progetti",
+            "--dry-run",
+        ]
+    )
+    assert code_idx == 0
+
+
 def test_cli_deprecated_check_links_removed(mock_vault: Path) -> None:
     """Verify deprecated check-links command is rejected by CLI argument parser."""
     import pytest

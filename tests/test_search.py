@@ -68,3 +68,92 @@ def test_search_combined_criteria_and_dict_export(mock_vault_with_config: Path) 
     assert d["total_matches"] == 1
     assert len(d["items"]) == 1
     assert d["items"][0]["title"] == "Progetto Alpha"
+
+
+def test_search_word_match_whole_words_only(mock_vault_with_config: Path) -> None:
+    """Verify word_match flag restricts matching to whole words only, avoiding substring false positives."""
+    v = Vault(mock_vault_with_config)
+
+    # Note 1: has substring "ai" inside words "email" and "certain", but not standalone "AI"
+    n1 = mock_vault_with_config / "20-29_Aree" / "Email_Details.md"
+    n1.write_text(
+        "---\ntipo: Appunto\ntags:\n  - area/test\n---\n# Email Details\n\nCertain things about email chains.",
+        encoding="utf-8",
+    )
+
+    # Note 2: has standalone word "AI"
+    n2 = mock_vault_with_config / "20-29_Aree" / "AI_Images.md"
+    n2.write_text(
+        "---\ntipo: Appunto\ntags:\n  - tech/ai\n---\n# AI Images\n\nGuide to generative AI models.",
+        encoding="utf-8",
+    )
+    v.refresh()
+
+    # Substring search matches both notes (and any other note containing 'ai')
+    res_sub = v.search(query="AI", word_match=False)
+    paths_sub = [it.rel_path for it in res_sub.items]
+    assert any("Email_Details" in p for p in paths_sub)
+    assert any("AI_Images" in p for p in paths_sub)
+
+    # Word-boundary search matches ONLY AI_Images, rejecting Email_Details
+    res_word = v.search(query="AI", word_match=True)
+    paths_word = [it.rel_path for it in res_word.items]
+    assert not any("Email_Details" in p for p in paths_word)
+    assert any("AI_Images" in p for p in paths_word)
+    assert res_word.filters.get("word_match") is True
+
+
+def test_cli_search_word_flag(mock_vault_with_config: Path, capsys) -> None:
+    """Verify CLI search supports -w and --word flags."""
+    from sbk.cli.main import main
+
+    n1 = mock_vault_with_config / "20-29_Aree" / "Email_Details.md"
+    n1.write_text(
+        "---\ntipo: Appunto\ntags:\n  - area/test\n---\n# Email Details\n\nCertain things about email chains.",
+        encoding="utf-8",
+    )
+    n2 = mock_vault_with_config / "20-29_Aree" / "AI_Images.md"
+    n2.write_text(
+        "---\ntipo: Appunto\ntags:\n  - tech/ai\n---\n# AI Images\n\nGuide to generative AI models.",
+        encoding="utf-8",
+    )
+
+    code = main(["--root", str(mock_vault_with_config), "search", "AI", "-w"])
+    assert code == 0
+    captured = capsys.readouterr()
+    assert "AI_Images" in captured.out
+    assert "Email_Details" not in captured.out
+
+
+def test_search_result_sequence_protocol(mock_vault_with_config: Path) -> None:
+    """Verify SearchResult implements sequence protocol (__len__, __iter__, __getitem__, __bool__, __contains__)."""
+    v = Vault(mock_vault_with_config)
+    res = v.search()
+
+    # len
+    assert len(res) == len(res.items)
+    assert len(res) > 0
+
+    # iter
+    items_from_iter = list(res)
+    assert items_from_iter == res.items
+
+    # getitem index
+    first_item = res[0]
+    assert first_item == res.items[0]
+    assert res[-1] == res.items[-1]
+
+    # getitem slice
+    slice_items = res[0:2]
+    assert isinstance(slice_items, list)
+    assert slice_items == res.items[0:2]
+
+    # bool
+    assert bool(res) is True
+    empty_res = v.search(query="NonexistentTermZ999_ShouldNeverMatch")
+    assert len(empty_res) == 0
+    assert bool(empty_res) is False
+
+    # contains
+    assert first_item in res
+    assert "not-an-item" not in res

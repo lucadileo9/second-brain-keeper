@@ -99,3 +99,19 @@ def test_audit_multiline_stem_collision(mock_vault: Path) -> None:
     assert "e' ambiguo e risolve a molteplici file:" in collision_warns[0]
     assert "* 10-19_Progetti/Progetto_Alpha.md" in collision_warns[0]
     assert "* 20-29_Aree/Progetto_Alpha.md" in collision_warns[0]
+
+
+def test_audit_relative_target_from_external_cwd(mock_vault: Path, monkeypatch, tmp_path: Path) -> None:
+    """Verify relative target paths are resolved against vault root when CWD is outside vault."""
+    monkeypatch.chdir(tmp_path)
+    cfg = load_vault_config(root_path=mock_vault)
+
+    # 1. Target relative note path from outside CWD
+    rep_note = run_audit(cfg, target="10-19_Progetti/Progetto_Alpha.md")
+    assert rep_note.total_issues == 0
+    assert rep_note.health_score == 100.0
+
+    # 2. Target relative folder path from outside CWD
+    rep_folder = run_audit(cfg, target="10-19_Progetti")
+    assert rep_folder.total_issues == 0
+    assert rep_folder.health_score == 100.0
