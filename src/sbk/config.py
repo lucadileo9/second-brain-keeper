@@ -48,6 +48,10 @@ naming_pattern = "contextual"                # "contextual" (00_Indice_<folder>.
 prefix = "00_"
 summary_max_chars = 250
 include_non_md = true
+
+[templates]
+folder = "01-09_Meta/01_Templates"           # Folder containing Markdown templates
+# default_template = "Template_Appunto.md"   # Default template when --template is omitted
 """
 
 
@@ -270,11 +274,15 @@ def load_vault_config(
     index_summary_max_chars = int(safe_get("indices.summary_max_chars") or 250)
     include_non_md = bool(safe_get("indices.include_non_md", True))
 
-    # Extract extended lifecycle and history sections
+    # Extract extended lifecycle, templates, and history sections
     archive_path_raw = safe_get("vault.archive_path")
     archive_path = str(archive_path_raw) if archive_path_raw else None
     inbox_folder = str(safe_get("vault.inbox_folder") or "00_Inbox")
-    templates_folder = str(safe_get("vault.templates_folder") or "00-09_Meta/02_Template")
+    templates_folder = str(
+        safe_get("templates.folder") or safe_get("vault.templates_folder") or "01-09_Meta/01_Templates"
+    )
+    default_template_raw = safe_get("templates.default_template")
+    default_template = str(default_template_raw) if default_template_raw else None
     offload_folder_raw = safe_get("attachments.offload_folder")
     offload_folder = str(offload_folder_raw) if offload_folder_raw else None
     max_undo_history = int(safe_get("history.max_transactions") or 100)
@@ -306,6 +314,7 @@ def load_vault_config(
         archive_path=archive_path,
         inbox_folder=inbox_folder,
         templates_folder=templates_folder,
+        default_template=default_template,
         offload_folder=offload_folder,
         max_undo_history=max_undo_history,
     )

@@ -51,6 +51,10 @@ acronyms = ["NASA", "ESA"]
 
 [indices]
 naming_pattern = "readme"
+
+[templates]
+folder = "01_System/Templates"
+default_template = "Base_Template.md"
 """
     toml_path.write_text(custom_toml, encoding="utf-8")
     config = load_vault_config(root_path=vault)
@@ -58,6 +62,8 @@ naming_pattern = "readme"
     assert config.naming_style == "kebab-case"
     assert config.acronyms == {"NASA", "ESA"}
     assert config.index_naming_pattern == "readme"
+    assert config.templates_folder == "01_System/Templates"
+    assert config.default_template == "Base_Template.md"
 
 
 def test_nonexistent_vault_raises_error(empty_temp_dir: Path) -> None:
